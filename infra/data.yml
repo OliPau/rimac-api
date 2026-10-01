@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Rimac demo private Aurora storage
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.87.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Project
+          Value: rimac
+  SubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.87.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+  SubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: 10.87.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+  SubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private database subnets
+      SubnetIds: [!Ref SubnetA, !Ref SubnetB]
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Data API only
+      VpcId: !Ref Vpc
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 127.0.0.1/32
+  Cluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBClusterIdentifier: rimac-demo
+      Engine: aurora-mysql
+      EngineVersion: 8.0.mysql_aurora.3.13.0
+      MasterUsername: rimac_admin
+      ManageMasterUserPassword: true
+      DatabaseName: appointments_pe
+      EnableHttpEndpoint: true
+      StorageEncrypted: true
+      BackupRetentionPeriod: 1
+      DBSubnetGroupName: !Ref SubnetGroup
+      VpcSecurityGroupIds: [!Ref SecurityGroup]
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: 0
+        MaxCapacity: 1
+        SecondsUntilAutoPause: 300
+      Tags:
+        - Key: Project
+          Value: rimac
+  Instance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: rimac-demo-writer
+      DBClusterIdentifier: !Ref Cluster
+      Engine: aurora-mysql
+      DBInstanceClass: db.serverless
+      PubliclyAccessible: false
+      AutoMinorVersionUpgrade: false
+      EnablePerformanceInsights: false
+      Tags:
+        - Key: Project
+          Value: rimac
+  SecretPE:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: rimac/demo/pe
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"rimac_pe"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+      Tags:
+        - Key: Project
+          Value: rimac
+  SecretCL:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: rimac/demo/cl
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"rimac_cl"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludePunctuation: true
+      Tags:
+        - Key: Project
+          Value: rimac
+Outputs:
+  ClusterArn:
+    Value: !GetAtt Cluster.DBClusterArn
+  AdminSecret:
+    Value: !GetAtt Cluster.MasterUserSecret.SecretArn
+  SecretPE:
+    Value: !Ref SecretPE
+  SecretCL:
+    Value: !Ref SecretCL
