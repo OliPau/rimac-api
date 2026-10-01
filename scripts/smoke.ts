@@ -1,19 +1,13 @@
+import { stackOutputs } from './cloud.js';
+import { stacks } from '../infra/config.js';
 import { randomInt, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import assert from 'node:assert/strict';
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { acceptance, appointment } from '../packages/contracts/src/index.js';
 import { z } from 'zod';
 
-const client = new CloudFormationClient({ region: 'us-east-1' });
-const stack = await client.send(new DescribeStacksCommand({ StackName: 'rimac-demo' }));
-const endpoint =
-  process.env.API_URL ??
-  stack.Stacks?.[0]?.Outputs?.find((item) => item.OutputKey === 'HttpApiUrl')?.OutputValue;
-if (!endpoint) {
-  throw new Error('Missing API endpoint');
-}
+const endpoint = process.env.API_URL ?? (await stackOutputs(stacks.application)).get('HttpApiUrl');
 const url = endpoint.replace(/\/$/, '');
 const insuredId = `00${randomInt(100, 999)}`;
 const scheduleId = Date.now();

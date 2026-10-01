@@ -1,3 +1,4 @@
+import { project, resource } from '../infra/config.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -15,19 +16,19 @@ import { DynamoAppointments } from '../packages/adapters/src/dynamo.js';
 import { DynamoOutbox } from '../packages/adapters/src/outbox.js';
 import { appointment as schema } from '../packages/contracts/src/index.js';
 
-const config = { region: 'us-east-1' };
+const config = { region: project.region };
 const sqs = new SQSClient(config);
 const client = DynamoDBDocumentClient.from(new DynamoDBClient(config));
 const tables = {
-  appointments: 'rimac-demo-appointments',
-  keys: 'rimac-demo-keys',
-  outbox: 'rimac-demo-outbox',
+  appointments: resource('appointments'),
+  keys: resource('keys'),
+  outbox: resource('outbox'),
 };
 const store = new DynamoAppointments(client, tables);
 const outbox = new DynamoOutbox(client, tables.outbox);
 
 async function queue(name: string) {
-  const result = await sqs.send(new GetQueueUrlCommand({ QueueName: `rimac-demo-${name}` }));
+  const result = await sqs.send(new GetQueueUrlCommand({ QueueName: resource(name) }));
   assert.ok(result.QueueUrl);
   return result.QueueUrl;
 }

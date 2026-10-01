@@ -1,19 +1,15 @@
+import { stackOutputs } from './cloud.js';
+import { project, stacks } from '../infra/config.js';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { RDSDataClient } from '@aws-sdk/client-rds-data';
 import { DataApi } from '../packages/adapters/src/data-api.js';
 import { MysqlStore } from '../packages/adapters/src/sql.js';
 import type { Event } from '../packages/core/src/index.js';
 
-const config = { region: 'us-east-1' };
-const result = await new CloudFormationClient(config).send(
-  new DescribeStacksCommand({ StackName: 'rimac-data-demo' }),
-);
-const outputs = new Map(
-  result.Stacks?.[0]?.Outputs?.map((item) => [item.OutputKey, item.OutputValue]),
-);
+const config = { region: project.region };
+const outputs = await stackOutputs(stacks.data);
 const resourceArn = outputs.get('ClusterArn');
 assert.ok(resourceArn);
 for (const countryISO of ['PE', 'CL'] as const) {

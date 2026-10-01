@@ -1,12 +1,13 @@
+import { stackOutputs } from './cloud.js';
+import { project, resource, stacks } from '../infra/config.js';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { CloudWatchClient, GetMetricStatisticsCommand } from '@aws-sdk/client-cloudwatch';
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { acceptance, appointment } from '../packages/contracts/src/index.js';
 import { z } from 'zod';
 
-const config = { region: 'us-east-1' };
+const config = { region: project.region };
 const metrics = new CloudWatchClient(config);
 let pausedAt: string | undefined;
 const started = new Date(Date.now() - 1000);
@@ -15,7 +16,7 @@ for (let attempt = 0; attempt < 25; attempt++) {
     new GetMetricStatisticsCommand({
       Namespace: 'AWS/RDS',
       MetricName: 'ServerlessDatabaseCapacity',
-      Dimensions: [{ Name: 'DBInstanceIdentifier', Value: 'rimac-demo-writer' }],
+      Dimensions: [{ Name: 'DBInstanceIdentifier', Value: resource('writer') }],
       StartTime: started,
       EndTime: new Date(),
       Period: 60,
@@ -31,13 +32,7 @@ for (let attempt = 0; attempt < 25; attempt++) {
   await delay(45000);
 }
 assert.ok(pausedAt, 'Aurora must reach zero ACUs without traffic');
-const stack = await new CloudFormationClient(config).send(
-  new DescribeStacksCommand({ StackName: 'rimac-demo' }),
-);
-const endpoint = stack.Stacks?.[0]?.Outputs?.find(
-  (item) => item.OutputKey === 'HttpApiUrl',
-)?.OutputValue;
-assert.ok(endpoint);
+const endpoint = (await stackOutputs(stacks.application)).get('HttpApiUrl');
 const resumed = Date.now();
 const response = await fetch(`${endpoint}/appointments`, {
   method: 'POST',

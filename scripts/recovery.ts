@@ -1,7 +1,8 @@
+import { stackOutputs } from './cloud.js';
+import { project, resource, stacks } from '../infra/config.js';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { SQSClient, GetQueueUrlCommand, SendMessageCommand } from '@aws-sdk/client-sqs';
@@ -12,14 +13,14 @@ import { DynamoOutbox } from '../packages/adapters/src/outbox.js';
 import { MysqlStore } from '../packages/adapters/src/sql.js';
 import { DataApi } from '../packages/adapters/src/data-api.js';
 
-const config = { region: 'us-east-1' };
+const config = { region: project.region };
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient(config));
 const appointments = new DynamoAppointments(dynamo, {
-  appointments: 'rimac-demo-appointments',
-  keys: 'rimac-demo-keys',
-  outbox: 'rimac-demo-outbox',
+  appointments: resource('appointments'),
+  keys: resource('keys'),
+  outbox: resource('outbox'),
 });
-const outbox = new DynamoOutbox(dynamo, 'rimac-demo-outbox');
+const outbox = new DynamoOutbox(dynamo, resource('outbox'));
 const insuredId = '00777';
 const scheduleId = Date.now();
 
@@ -49,12 +50,7 @@ const second = await appointments.create({
 });
 const event = await outbox.claim(second.appointmentId);
 assert.ok(event);
-const stack = await new CloudFormationClient(config).send(
-  new DescribeStacksCommand({ StackName: 'rimac-data-demo' }),
-);
-const outputs = new Map(
-  stack.Stacks?.[0]?.Outputs?.map((item) => [item.OutputKey, item.OutputValue]),
-);
+const outputs = await stackOutputs(stacks.data);
 const resourceArn = outputs.get('ClusterArn');
 const secretArn = outputs.get('SecretCL');
 assert.ok(resourceArn && secretArn);
@@ -68,7 +64,7 @@ const saved = await store.save(event);
 assert.equal(saved.published, false);
 console.log('Committed SQL appointment and outbox without publishing to EventBridge');
 const sqs = new SQSClient(config);
-const queue = await sqs.send(new GetQueueUrlCommand({ QueueName: 'rimac-demo-SQS_CL' }));
+const queue = await sqs.send(new GetQueueUrlCommand({ QueueName: resource('SQS_CL') }));
 assert.ok(queue.QueueUrl);
 for (let duplicate = 0; duplicate < 2; duplicate++) {
   await sqs.send(
@@ -84,7 +80,7 @@ for (let duplicate = 0; duplicate < 2; duplicate++) {
     new PutEventsCommand({
       Entries: [
         {
-          EventBusName: 'rimac-demo',
+          EventBusName: stacks.application,
           Source: 'rimac.appointments',
           DetailType: 'appointment.completed',
           Detail: JSON.stringify(saved.confirmation),

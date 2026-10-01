@@ -1,6 +1,7 @@
+import { stackOutputs } from './cloud.js';
+import { project, stacks } from '../infra/config.js';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { RDSDataClient } from '@aws-sdk/client-rds-data';
 import { DataApi } from '../packages/adapters/src/data-api.js';
 import { z } from 'zod';
@@ -8,24 +9,12 @@ import { z } from 'zod';
 const evidence = z
   .object({ insuredId: z.string(), scheduleId: z.number() })
   .parse(JSON.parse(await readFile('delivery/smoke.json', 'utf8')));
-const config = { region: 'us-east-1' };
-const result = await new CloudFormationClient(config).send(
-  new DescribeStacksCommand({ StackName: 'rimac-data-demo' }),
-);
-const outputs = new Map(
-  result.Stacks?.[0]?.Outputs?.map((item) => [item.OutputKey, item.OutputValue]),
-);
-function output(key: string): string {
-  const value = outputs.get(key);
-  if (!value) {
-    throw new Error(`Missing ${key}`);
-  }
-  return value;
-}
+const config = { region: project.region };
+const outputs = await stackOutputs(stacks.data);
 for (const country of ['PE', 'CL']) {
   const database = new DataApi(new RDSDataClient(config), {
-    resourceArn: output('ClusterArn'),
-    secretArn: output(`Secret${country}`),
+    resourceArn: outputs.get('ClusterArn'),
+    secretArn: outputs.get(`Secret${country}`),
     database: `appointments_${country.toLowerCase()}`,
   });
   const rows = await database.execute(
