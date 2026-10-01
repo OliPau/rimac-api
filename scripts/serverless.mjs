@@ -29,12 +29,23 @@ if (command === 'deploy') {
 const { default: config } = await import('../infra/service.js');
 await writeFile('serverless.generated.json', JSON.stringify(config, null, 2));
 const require = createRequire(import.meta.url);
-const result = spawnSync(
-  process.execPath,
-  [require.resolve('serverless/run.js'), command, '--config', 'serverless.generated.json'],
-  {
+function run(args) {
+  const result = spawnSync(process.execPath, [require.resolve('serverless/run.js'), ...args], {
     stdio: 'inherit',
     env: process.env,
-  },
-);
-process.exitCode = result.status ?? 1;
+  });
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1);
+  }
+}
+
+if (command === 'deploy') {
+  run(['package', '--config', 'serverless.generated.json']);
+  const inspection = spawnSync('python', ['scripts/inspect-package.py'], { stdio: 'inherit' });
+  if (inspection.status !== 0) {
+    process.exit(inspection.status ?? 1);
+  }
+  run(['deploy', '--config', 'serverless.generated.json', '--package', '.serverless']);
+} else {
+  run([command, '--config', 'serverless.generated.json']);
+}

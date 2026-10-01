@@ -11,18 +11,34 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "integration": "vitest run --config vitest.integration.ts",
+    "openapi": "tsx scripts/openapi.ts",
+    "package": "node scripts/serverless.mjs package",
+    "bundle": "node scripts/bundle.mjs",
+    "deploy": "node scripts/serverless.mjs deploy",
+    "migrate": "tsx scripts/migrate.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "format": "prettier --check ."
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^13.1.0",
     "@aws-sdk/client-cloudformation": "^3.1144.0",
+    "@aws-sdk/client-cloudwatch": "^3.1144.0",
     "@aws-sdk/client-dynamodb": "^3.1144.0",
+    "@aws-sdk/client-eventbridge": "^3.1144.0",
+    "@aws-sdk/client-iam": "^3.1144.0",
+    "@aws-sdk/client-lambda": "^3.1144.0",
     "@aws-sdk/client-rds-data": "^3.1144.0",
     "@aws-sdk/client-secrets-manager": "^3.1144.0",
+    "@aws-sdk/client-sqs": "^3.1144.0",
     "@aws-sdk/credential-providers": "^3.1144.0",
     "@aws-sdk/lib-dynamodb": "^3.1144.0",
     "@types/aws-lambda": "^8.10.164",
     "@types/node": "^24.19.0",
     "@vitest/coverage-v8": "^5.0.3",
+    "aws-sdk-client-mock": "^4.1.0",
+    "esbuild": "^0.28.2",
     "eslint": "^10.11.0",
     "mysql2": "^3.24.5",
     "prettier": "^3.9.9",
@@ -30,6 +46,7 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.71.0",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.3",
+    "zod": "^4.6.5"
   }
 }
