@@ -1,30 +1,22 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   DynamoDBDocumentClient,
   GetCommand,
   QueryCommand,
   TransactWriteCommand,
   UpdateCommand,
-  type TransactWriteCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import { appointment, acceptance } from '@rimac/contracts';
-import { Conflict, InvalidCursor, type Appointments, type Event, type Request } from '@rimac/core';
+import { appointment } from '@rimac/contracts';
+import type { Appointments, Event, Request } from '@rimac/core';
+import { accept, identity, requested } from '@rimac/core/appointment';
+import { decodeCursor, encodeCursor } from './cursor.js';
+import { hashKey, readAcceptance } from './keys.js';
+import { appointmentWrites, keyWrite, type Tables } from './writes.js';
 
-export interface Tables {
-  appointments: string;
-  keys: string;
-  outbox: string;
-}
-
-export function fingerprint(input: Request): string {
-  return createHash('sha256')
-    .update(JSON.stringify([input.insuredId, input.countryISO, input.scheduleId]))
-    .digest('hex');
-}
-
-function identifier(hash: string): string {
-  return `${hash.slice(0, 8)}-${hash.slice(8, 12)}-4${hash.slice(13, 16)}-a${hash.slice(17, 20)}-${hash.slice(20, 32)}`;
-}
+const transactionAttempts = 8;
+const transactionRetryBaseMs = 10;
+const transactionRetryJitterMs = 20;
 
 export class DynamoAppointments implements Appointments {
   constructor(
@@ -34,27 +26,16 @@ export class DynamoAppointments implements Appointments {
   ) {}
 
   async create(input: Request, key?: string) {
-    const hash = fingerprint(input);
-    const appointmentId = identifier(hash);
+    const { fingerprint, appointmentId } = identity(input);
     const itemKey = { insuredId: input.insuredId, appointmentId };
-    const keyHash = key ? createHash('sha256').update(key).digest('hex') : undefined;
-
-    for (let attempt = 0; attempt < 8; attempt++) {
+    const keyHash = key ? hashKey(key) : undefined;
+    for (let attempt = 0; ; attempt++) {
       const seconds = Math.floor(this.now() / 1000);
-      if (keyHash) {
-        const saved = await this.client.send(
-          new GetCommand({
-            TableName: this.tables.keys,
-            Key: { id: keyHash },
-            ConsistentRead: true,
-          }),
-        );
-        if (saved.Item && Number(saved.Item.expiresAt) > seconds) {
-          if (saved.Item.fingerprint !== hash) {
-            throw new Conflict('Idempotency key already used');
-          }
-          return acceptance.parse(saved.Item.acceptance);
-        }
+      const saved = keyHash
+        ? await readAcceptance(this.client, this.tables.keys, keyHash, fingerprint, seconds)
+        : undefined;
+      if (saved) {
+        return saved;
       }
 
       const existing = await this.client.send(
@@ -67,55 +48,16 @@ export class DynamoAppointments implements Appointments {
       const createdAt = existing.Item
         ? appointment.parse(existing.Item).createdAt
         : new Date(this.now()).toISOString();
-      const accepted = acceptance.parse({
-        appointmentId,
-        status: 'pending',
-        createdAt,
-        message: 'El agendamiento está en proceso.',
-      });
-      const writes: NonNullable<TransactWriteCommandInput['TransactItems']> = [];
-
-      if (!existing.Item) {
-        const event: Event = {
-          ...input,
-          version: 1,
-          type: 'appointment.requested',
-          eventId: randomUUID(),
-          appointmentId,
-          correlationId: randomUUID(),
-          occurredAt: createdAt,
-        };
-        writes.push(
-          {
-            Put: {
-              TableName: this.tables.appointments,
-              Item: { ...input, appointmentId, status: 'pending', createdAt },
-              ConditionExpression: 'attribute_not_exists(appointmentId)',
-            },
-          },
-          {
-            Put: {
-              TableName: this.tables.outbox,
-              Item: { id: appointmentId, event, state: 'pending', dueAt: seconds, attempts: 0 },
-              ConditionExpression: 'attribute_not_exists(id)',
-            },
-          },
-        );
-      }
+      const accepted = accept(appointmentId, createdAt);
+      const writes = existing.Item
+        ? []
+        : appointmentWrites(
+            this.tables,
+            requested(input, accepted, randomUUID(), randomUUID()),
+            seconds,
+          );
       if (keyHash) {
-        writes.push({
-          Put: {
-            TableName: this.tables.keys,
-            Item: {
-              id: keyHash,
-              fingerprint: hash,
-              acceptance: accepted,
-              expiresAt: seconds + 86400,
-            },
-            ConditionExpression: 'attribute_not_exists(id) OR expiresAt <= :now',
-            ExpressionAttributeValues: { ':now': seconds },
-          },
-        });
+        writes.push(keyWrite(this.tables.keys, keyHash, fingerprint, accepted, seconds));
       }
       if (writes.length === 0) {
         return accepted;
@@ -128,37 +70,19 @@ export class DynamoAppointments implements Appointments {
         if (
           !(error instanceof Error) ||
           error.name !== 'TransactionCanceledException' ||
-          attempt === 7
+          attempt === transactionAttempts - 1
         ) {
           throw error;
         }
-        await new Promise((resolve) => setTimeout(resolve, 10 * 2 ** attempt + Math.random() * 20));
+        await delay(
+          transactionRetryBaseMs * 2 ** attempt + Math.random() * transactionRetryJitterMs,
+        );
       }
     }
-    throw new Error('Unreachable transaction state');
   }
 
   async list(insuredId: string, limit: number, cursor?: string) {
-    let start: { insuredId: string; appointmentId: string } | undefined;
-    if (cursor) {
-      try {
-        const decoded: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString());
-        if (
-          typeof decoded !== 'object' ||
-          decoded === null ||
-          !('insuredId' in decoded) ||
-          !('appointmentId' in decoded) ||
-          decoded.insuredId !== insuredId ||
-          typeof decoded.appointmentId !== 'string' ||
-          !/^[a-f0-9-]{36}$/.test(decoded.appointmentId)
-        ) {
-          throw new InvalidCursor();
-        }
-        start = { insuredId, appointmentId: decoded.appointmentId };
-      } catch {
-        throw new InvalidCursor('Invalid pagination cursor');
-      }
-    }
+    const start = cursor ? decodeCursor(cursor, insuredId) : undefined;
     const result = await this.client.send(
       new QueryCommand({
         TableName: this.tables.appointments,
@@ -171,9 +95,7 @@ export class DynamoAppointments implements Appointments {
     );
     return {
       items: (result.Items ?? []).map((item) => appointment.parse(item)),
-      ...(result.LastEvaluatedKey
-        ? { cursor: Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64url') }
-        : {}),
+      ...(result.LastEvaluatedKey ? { cursor: encodeCursor(result.LastEvaluatedKey) } : {}),
     };
   }
 
