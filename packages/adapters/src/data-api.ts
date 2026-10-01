@@ -65,7 +65,8 @@ export class DataApi implements Database {
     return (result.records ?? []).map((record) => {
       const row: Record<string, unknown> = {};
       record.forEach((value, index) => {
-        const name = result.columnMetadata?.[index]?.name;
+        const column = result.columnMetadata?.[index];
+        const name = column?.label || column?.name;
         if (!name) {
           throw new Error('Missing SQL column metadata');
         }

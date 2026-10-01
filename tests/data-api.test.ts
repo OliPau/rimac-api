@@ -24,7 +24,7 @@ test('maps prepared statement fields and commits successful transactions', async
   const { database, send, client } = setup();
   send.on(BeginTransactionCommand).resolves({ transactionId: 'transaction' });
   send.on(ExecuteStatementCommand).resolves({
-    columnMetadata: [{ name: 'total' }],
+    columnMetadata: [{ name: '', label: 'total' }],
     records: [[{ longValue: 1 }]],
   });
   send.on(CommitTransactionCommand).resolves({});
