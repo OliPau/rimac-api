@@ -22,6 +22,7 @@ jobs:
       - run: pnpm integration
       - run: pnpm openapi
       - run: pnpm bundle
+      - run: pnpm infra:validate
       - run: python scripts/package-local.py
       - run: python scripts/inspect-package.py .local/artifacts
       - if: always()

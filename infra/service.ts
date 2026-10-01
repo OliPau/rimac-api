@@ -2,9 +2,11 @@ import { messaging } from './messaging.js';
 import { tables } from './tables.js';
 import { roles } from './roles.js';
 import { monitoring } from './monitoring.js';
+import type { AWS, AwsCfGetAtt } from '@serverless/typescript';
+import type { Country, Functions } from './types.js';
 
 const cluster = process.env.CLUSTER_ARN ?? 'arn:aws:rds:us-east-1:000000000000:cluster:rimac-demo';
-const secrets = {
+const secrets: Record<Country, string> = {
   PE:
     process.env.SECRET_PE ??
     'arn:aws:secretsmanager:us-east-1:000000000000:secret:rimac/demo/pe-local',
@@ -12,14 +14,14 @@ const secrets = {
     process.env.SECRET_CL ??
     'arn:aws:secretsmanager:us-east-1:000000000000:secret:rimac/demo/cl-local',
 };
-const arn = (name) => ({ 'Fn::GetAtt': [name, 'Arn'] });
+const arn = (name: string): AwsCfGetAtt => ({ 'Fn::GetAtt': [name, 'Arn'] });
 const environment = {
   APPOINTMENTS_TABLE: { Ref: 'Appointments' },
   KEYS_TABLE: { Ref: 'Keys' },
   OUTBOX_TABLE: { Ref: 'Outbox' },
   TOPIC_ARN: { Ref: 'Topic' },
 };
-const functions = {
+const functions: Functions = {
   appointment: {
     handler: 'apps/api/src/appointment.handler',
     timeout: 15,
@@ -48,7 +50,7 @@ const functions = {
     events: [{ schedule: 'rate(1 minute)' }],
   },
 };
-for (const country of ['PE', 'CL']) {
+for (const country of ['PE', 'CL'] as const) {
   functions[`appointment_${country.toLowerCase()}`] = {
     handler: 'apps/api/src/worker.handler',
     timeout: 60,
@@ -111,4 +113,4 @@ export default {
       EventBus: { Value: { Ref: 'Bus' } },
     },
   },
-};
+} satisfies AWS;

@@ -29,7 +29,7 @@ if (command === 'deploy') {
 const { default: config } = await import('../infra/service.js');
 await writeFile('serverless.generated.json', JSON.stringify(config, null, 2));
 const require = createRequire(import.meta.url);
-function run(args) {
+function run(args: string[]): void {
   const result = spawnSync(process.execPath, [require.resolve('serverless/run.js'), ...args], {
     stdio: 'inherit',
     env: process.env,

@@ -11,5 +11,13 @@
     "resolveJsonModule": true,
     "noEmit": true
   },
-  "include": ["apps/**/*.ts", "packages/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts", "vitest*.ts"]
+  "include": [
+    "apps/**/*.ts",
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts",
+    "infra/**/*.ts",
+    "eslint.config.ts",
+    "vitest*.ts"
+  ]
 }

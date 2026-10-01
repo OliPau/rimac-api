@@ -1,7 +1,10 @@
-const arn = (name) => ({ 'Fn::GetAtt': [name, 'Arn'] });
-const ref = (name) => ({ Ref: name });
+import type { AwsArn, AwsCfGetAtt, AwsCfRef } from '@serverless/typescript';
+import type { Resources, Resource } from './types.js';
 
-function queue(name, visibility, deadLetter) {
+const arn = (name: string): AwsCfGetAtt => ({ 'Fn::GetAtt': [name, 'Arn'] });
+const ref = (name: string): AwsCfRef => ({ Ref: name });
+
+function queue(name: string, visibility: number, deadLetter?: string): Resource {
   return {
     Type: 'AWS::SQS::Queue',
     Properties: {
@@ -16,7 +19,7 @@ function queue(name, visibility, deadLetter) {
   };
 }
 
-function policy(queueName, service, source) {
+function policy(queueName: string, service: string, source: AwsArn): Resource {
   return {
     Type: 'AWS::SQS::QueuePolicy',
     Properties: {
@@ -37,8 +40,8 @@ function policy(queueName, service, source) {
   };
 }
 
-export function messaging() {
-  const resources = {
+export function messaging(): Resources {
+  const resources: Resources = {
     Topic: {
       Type: 'AWS::SNS::Topic',
       Properties: { TopicName: 'rimac-demo', KmsMasterKeyId: 'alias/aws/sns' },

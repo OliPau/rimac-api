@@ -1,7 +1,14 @@
-const arn = (name) => ({ 'Fn::GetAtt': [name, 'Arn'] });
-const allow = (Action, Resource) => ({ Effect: 'Allow', Action, Resource });
+import type { AwsArn, AwsCfGetAtt } from '@serverless/typescript';
+import type { Country, Resource, Resources, Statement } from './types.js';
 
-function role(name, statements) {
+const arn = (name: string): AwsCfGetAtt => ({ 'Fn::GetAtt': [name, 'Arn'] });
+const allow = (Action: string | string[], Resource: AwsArn | AwsArn[]): Statement => ({
+  Effect: 'Allow',
+  Action,
+  Resource,
+});
+
+function role(name: string, statements: Statement[]): Resource {
   return {
     Type: 'AWS::IAM::Role',
     Properties: {
@@ -37,7 +44,7 @@ function role(name, statements) {
   };
 }
 
-export function roles(cluster, secrets) {
+export function roles(cluster: string, secrets: Record<Country, string>): Resources {
   const publish = allow('sns:Publish', { Ref: 'Topic' });
   const decryptTopic = allow(['kms:GenerateDataKey', 'kms:Decrypt'], '*');
   decryptTopic.Condition = { StringEquals: { 'kms:ViaService': 'sns.us-east-1.amazonaws.com' } };
@@ -45,9 +52,9 @@ export function roles(cluster, secrets) {
     ['dynamodb:GetItem', 'dynamodb:UpdateItem', 'dynamodb:Query'],
     [arn('Outbox'), { 'Fn::Join': ['', [arn('Outbox'), '/index/due']] }],
   );
-  const consume = (queue) =>
+  const consume = (queue: string): Statement =>
     allow(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'], arn(queue));
-  const resources = {
+  const resources: Resources = {
     AppointmentRole: role('appointment', [
       allow(
         [
@@ -66,7 +73,7 @@ export function roles(cluster, secrets) {
     ]),
     RetryRole: role('retry', [outbox, publish, decryptTopic]),
   };
-  for (const country of ['PE', 'CL']) {
+  for (const country of ['PE', 'CL'] as const) {
     resources[`WorkerRole${country}`] = role(`appointment_${country.toLowerCase()}`, [
       consume(`Queue${country}`),
       allow(

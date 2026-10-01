@@ -1,6 +1,8 @@
-export function monitoring() {
+import type { Resources } from './types.js';
+
+export function monitoring(): Resources {
   const alerts = { 'Fn::Sub': 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:rimac-demo-alerts' };
-  const resources = {};
+  const resources: Resources = {};
   for (const name of [
     'DLQPE',
     'DLQCL',
