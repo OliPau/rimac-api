@@ -26,7 +26,7 @@ async function call(path: string, body?: unknown, key?: string): Promise<Respons
       headers: { 'content-type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    if (response.status !== 429 || attempt >= 6) {
+    if (![429, 503].includes(response.status) || attempt >= 6) {
       return response;
     }
     await delay(1000 + Math.random() * 1000);

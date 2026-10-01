@@ -25,14 +25,15 @@ for (const country of ['PE', 'CL']) {
       ResourceArns: [own, other],
     }),
   );
-  assert.equal(
-    result.EvaluationResults?.find((item) => item.EvalResourceName === own)?.EvalDecision,
-    'allowed',
+  const decisions = (result.EvaluationResults ?? []).flatMap(
+    (evaluation) =>
+      evaluation.ResourceSpecificResults?.map((resource) => ({
+        resource: resource.EvalResourceName,
+        decision: resource.EvalResourceDecision,
+      })) ?? [{ resource: evaluation.EvalResourceName, decision: evaluation.EvalDecision }],
   );
-  assert.equal(
-    result.EvaluationResults?.find((item) => item.EvalResourceName === other)?.EvalDecision,
-    'implicitDeny',
-  );
+  assert.equal(decisions.find((item) => item.resource === own)?.decision, 'allowed');
+  assert.equal(decisions.find((item) => item.resource === other)?.decision, 'implicitDeny');
   console.log(`${country}: own secret allowed, other country secret denied`);
 }
 await writeFile(
