@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.serverless/
+.env*
+!.env.example
+*.md
+*.pdf
+docs/
+delivery/
+coverage/
+reports/
+.local/
+*.zip
+*.log
+openapi.json
