@@ -20,7 +20,11 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm check
+      - run: docker compose up -d --wait
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm format
+      - run: pnpm coverage
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE }}
@@ -30,3 +34,5 @@ jobs:
         env:
           SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
       - run: pnpm smoke
+      - if: always()
+        run: docker compose down

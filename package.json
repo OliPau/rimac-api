@@ -11,7 +11,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "coverage": "vitest run --coverage",
+    "coverage": "vitest run --config vitest.coverage.ts --coverage && tsx scripts/check-coverage.ts",
     "integration": "vitest run --config vitest.integration.ts",
     "openapi": "tsx scripts/openapi.ts",
     "package": "tsx scripts/serverless.ts package",
