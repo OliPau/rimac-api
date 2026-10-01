@@ -41,6 +41,8 @@ export class CompletionPublisher implements Publisher {
     if (result.FailedEntryCount || result.Entries?.some((entry) => entry.ErrorCode)) {
       throw new Error('EventBridge rejected confirmation');
     }
-    if (!result.Entries?.[0]?.EventId) throw new Error('Missing EventBridge receipt');
+    if (!result.Entries?.[0]?.EventId) {
+      throw new Error('Missing EventBridge receipt');
+    }
   }
 }

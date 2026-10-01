@@ -9,7 +9,9 @@ import { env, logger } from './config.js';
 import { batch } from './batch.js';
 
 const country = env('COUNTRY');
-if (country !== 'PE' && country !== 'CL') throw new Error('Invalid worker country');
+if (country !== 'PE' && country !== 'CL') {
+  throw new Error('Invalid worker country');
+}
 const worker = new Worker(
   country,
   new MysqlStore(

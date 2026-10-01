@@ -5,6 +5,7 @@ export default tseslint.config(
     ignores: ['**/node_modules/**', '**/.serverless/**', 'coverage/**', 'delivery/**', '.local/**'],
   },
   ...tseslint.configs.recommendedTypeChecked,
+  { rules: { curly: ['error', 'all'] } },
   {
     files: ['tests/**/*.ts'],
     rules: {

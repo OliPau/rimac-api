@@ -8,7 +8,9 @@ export class Dispatcher {
 
   async dispatch(id: string): Promise<void> {
     const event = await this.outbox.claim(id);
-    if (!event) return;
+    if (!event) {
+      return;
+    }
 
     try {
       await this.publisher.publish(event);

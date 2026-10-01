@@ -27,8 +27,9 @@ test.each([
 });
 test('validates pagination and idempotency keys', () => {
   expect(query.parse({})).toEqual({ limit: 20 });
-  for (const limit of ['0', '-1', '101', '1.2', 'foo'])
+  for (const limit of ['0', '-1', '101', '1.2', 'foo']) {
     expect(query.safeParse({ limit }).success).toBe(false);
+  }
   expect(idempotencyKey.safeParse(' space').success).toBe(false);
   expect(idempotencyKey.safeParse('request-123').success).toBe(true);
 });

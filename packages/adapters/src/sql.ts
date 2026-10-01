@@ -60,7 +60,9 @@ export class MysqlStore implements CountryStore {
           id: event.appointmentId,
         },
       );
-      if (!row || typeof row.payload !== 'string') throw new Error('Missing confirmation outbox');
+      if (!row || typeof row.payload !== 'string') {
+        throw new Error('Missing confirmation outbox');
+      }
       return {
         confirmation: eventSchema.parse(JSON.parse(row.payload)),
         published: Number(row.published) === 1,

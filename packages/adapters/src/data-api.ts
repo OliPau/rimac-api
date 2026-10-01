@@ -27,7 +27,9 @@ export class DataApi implements Database {
     return this.retry(async () => {
       const result = await this.client.send(new BeginTransactionCommand(this.connection));
       const transactionId = result.transactionId;
-      if (!transactionId) throw new Error('Missing SQL transaction');
+      if (!transactionId) {
+        throw new Error('Missing SQL transaction');
+      }
       try {
         const value = await action({
           execute: (sql, parameters = {}) => this.statement(sql, parameters, transactionId),
@@ -64,7 +66,9 @@ export class DataApi implements Database {
       const row: Record<string, unknown> = {};
       record.forEach((value, index) => {
         const name = result.columnMetadata?.[index]?.name;
-        if (!name) throw new Error('Missing SQL column metadata');
+        if (!name) {
+          throw new Error('Missing SQL column metadata');
+        }
         row[name] = value.isNull
           ? null
           : (value.stringValue ?? value.longValue ?? value.booleanValue);
@@ -86,7 +90,9 @@ export class DataApi implements Database {
             'ServiceUnavailableError',
             'InternalServerErrorException',
           ].includes(error.name);
-        if (!transient || attempt >= 4) throw error;
+        if (!transient || attempt >= 4) {
+          throw error;
+        }
         await new Promise((resolve) =>
           setTimeout(resolve, 1000 * 2 ** attempt + Math.random() * 500),
         );

@@ -70,19 +70,24 @@ test('leases pending publications and recovers abandoned or failed claims', asyn
   expect(await second.claim(accepted.appointmentId)).toBeUndefined();
   clock += 61000;
   const recovered = await second.claim(accepted.appointmentId);
-  if (!claimed || !recovered) throw new Error('Missing claimed event');
+  if (!claimed || !recovered) {
+    throw new Error('Missing claimed event');
+  }
   await expect(outbox.sent(claimed)).rejects.toThrow();
   await second.failed(recovered);
   clock += 100000;
   expect(await second.due(25)).toContain(accepted.appointmentId);
   const retry = await second.claim(accepted.appointmentId);
-  if (!retry) throw new Error('Missing retry event');
+  if (!retry) {
+    throw new Error('Missing retry event');
+  }
   await second.sent(retry);
   expect(await outbox.claim(accepted.appointmentId)).toBeUndefined();
 });
 afterAll(async () => {
-  for (const TableName of Object.values(tables))
+  for (const TableName of Object.values(tables)) {
     await client.send(new DeleteTableCommand({ TableName }));
+  }
   client.destroy();
 });
 

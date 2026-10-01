@@ -14,7 +14,9 @@ const outputs = new Map(
 
 function output(name: string): string {
   const value = outputs.get(name);
-  if (!value) throw new Error(`Missing stack output: ${name}`);
+  if (!value) {
+    throw new Error(`Missing stack output: ${name}`);
+  }
   return value;
 }
 

@@ -50,7 +50,9 @@ export class DynamoAppointments implements Appointments {
           }),
         );
         if (saved.Item && Number(saved.Item.expiresAt) > seconds) {
-          if (saved.Item.fingerprint !== hash) throw new Conflict('Idempotency key already used');
+          if (saved.Item.fingerprint !== hash) {
+            throw new Conflict('Idempotency key already used');
+          }
           return acceptance.parse(saved.Item.acceptance);
         }
       }
@@ -115,7 +117,9 @@ export class DynamoAppointments implements Appointments {
           },
         });
       }
-      if (writes.length === 0) return accepted;
+      if (writes.length === 0) {
+        return accepted;
+      }
 
       try {
         await this.client.send(new TransactWriteCommand({ TransactItems: writes }));
@@ -174,7 +178,9 @@ export class DynamoAppointments implements Appointments {
   }
 
   async confirm(event: Event): Promise<void> {
-    if (event.type !== 'appointment.completed') throw new Error('Unexpected confirmation type');
+    if (event.type !== 'appointment.completed') {
+      throw new Error('Unexpected confirmation type');
+    }
     await this.client.send(
       new UpdateCommand({
         TableName: this.tables.appointments,

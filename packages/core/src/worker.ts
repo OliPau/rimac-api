@@ -13,7 +13,9 @@ export class Worker {
     }
 
     const result = await this.store.save(event);
-    if (result.published) return;
+    if (result.published) {
+      return;
+    }
 
     await this.publisher.publish(result.confirmation);
     await this.store.published(result.confirmation.eventId);
