@@ -1,1 +1,6 @@
-{ "name": "@rimac/core", "private": true, "type": "module", "exports": "./src/index.ts" }
+{
+  "name": "@rimac/core",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts"
+}

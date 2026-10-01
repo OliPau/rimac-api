@@ -1,1 +1,5 @@
-{ "name": "@rimac/api", "private": true, "type": "module" }
+{
+  "name": "@rimac/api",
+  "private": true,
+  "type": "module"
+}
