@@ -65,3 +65,67 @@ test.each(['DatabaseResumingException', 'ThrottlingException', 'TooManyRequestsE
     vi.useRealTimers();
   },
 );
+
+test('maps nullable and scalar fields and rejects incomplete metadata', async () => {
+  const { database, send, client } = setup();
+  send
+    .on(ExecuteStatementCommand)
+    .resolvesOnce({})
+    .resolvesOnce({
+      columnMetadata: ['text', 'number', 'flag', 'empty'].map((name) => ({ name })),
+      records: [
+        [{ stringValue: 'value' }, { longValue: 0 }, { booleanValue: false }, { isNull: true }],
+      ],
+    })
+    .resolvesOnce({ records: [[{ longValue: 1 }]] })
+    .resolvesOnce({ columnMetadata: [{}], records: [[{ longValue: 1 }]] });
+  expect(await database.execute('SELECT 1')).toEqual([]);
+  expect(await database.execute('SELECT :value', { value: 'text' })).toEqual([
+    { text: 'value', number: 0, flag: false, empty: null },
+  ]);
+  await expect(database.execute('SELECT 1')).rejects.toThrow('Missing SQL column metadata');
+  await expect(database.execute('SELECT 1')).rejects.toThrow('Missing SQL column metadata');
+  expect(send.commandCalls(ExecuteStatementCommand)[1]?.args[0].input.parameters).toEqual([
+    { name: 'value', value: { stringValue: 'text' } },
+  ]);
+  send.restore();
+  client.destroy();
+});
+
+test('requires a transaction identifier and rolls back before propagating failure', async () => {
+  const { database, send, client } = setup();
+  send.on(BeginTransactionCommand).resolvesOnce({}).resolves({ transactionId: 'transaction' });
+  await expect(database.transaction((sql) => sql.execute('SELECT 1'))).rejects.toThrow(
+    'Missing SQL transaction',
+  );
+  send.on(ExecuteStatementCommand).rejects(new Error('query failed'));
+  send.on(RollbackTransactionCommand).resolves({});
+  await expect(database.transaction((sql) => sql.execute('SELECT 1'))).rejects.toThrow(
+    'query failed',
+  );
+  expect(send.commandCalls(RollbackTransactionCommand)).toHaveLength(1);
+  send.restore();
+  client.destroy();
+});
+
+test('bounds persistent transient failures and preserves unknown rejections', async () => {
+  vi.useFakeTimers();
+  const { database, send, client } = setup();
+  try {
+    send
+      .on(ExecuteStatementCommand)
+      .rejects(Object.assign(new Error('offline'), { name: 'DatabaseUnavailableException' }));
+    const failure = expect(database.execute('SELECT 1')).rejects.toThrow('offline');
+    await vi.runAllTimersAsync();
+    await failure;
+    expect(send.commandCalls(ExecuteStatementCommand)).toHaveLength(5);
+    send
+      .on(ExecuteStatementCommand)
+      .callsFake(vi.fn<() => Promise<never>>().mockRejectedValue('unknown'));
+    await expect(database.execute('SELECT 1')).rejects.toBe('unknown');
+  } finally {
+    send.restore();
+    client.destroy();
+    vi.useRealTimers();
+  }
+});
