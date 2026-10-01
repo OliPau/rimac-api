@@ -1,10 +1,11 @@
+import { prefix } from './config.js';
 import type { Table } from './types.js';
 
 function table(name: string, attributes: string[]): Table {
   return {
     Type: 'AWS::DynamoDB::Table',
     Properties: {
-      TableName: `rimac-demo-${name.toLowerCase()}`,
+      TableName: `${prefix}-${name.toLowerCase()}`,
       BillingMode: 'PAY_PER_REQUEST',
       SSESpecification: { SSEEnabled: true },
       AttributeDefinitions: attributes.map((AttributeName) => ({

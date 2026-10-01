@@ -1,7 +1,8 @@
+import { prefix } from './config.js';
 import type { Resources } from './types.js';
 
 export function monitoring(): Resources {
-  const alerts = { 'Fn::Sub': 'arn:aws:sns:${AWS::Region}:${AWS::AccountId}:rimac-demo-alerts' };
+  const alerts = { 'Fn::Sub': `arn:aws:sns:\${AWS::Region}:\${AWS::AccountId}:${prefix}-alerts` };
   const resources: Resources = {};
   for (const name of [
     'DLQPE',
@@ -14,7 +15,7 @@ export function monitoring(): Resources {
     resources[`${name}Alarm`] = {
       Type: 'AWS::CloudWatch::Alarm',
       Properties: {
-        AlarmName: `rimac-demo-${name}`,
+        AlarmName: `${prefix}-${name}`,
         Namespace: 'AWS/SQS',
         MetricName: 'ApproximateNumberOfMessagesVisible',
         Statistic: 'Maximum',
@@ -32,10 +33,10 @@ export function monitoring(): Resources {
     resources[`${name.replaceAll('_', '')}Errors`] = {
       Type: 'AWS::CloudWatch::Alarm',
       Properties: {
-        AlarmName: `rimac-demo-${name}-errors`,
+        AlarmName: `${prefix}-${name}-errors`,
         Namespace: 'AWS/Lambda',
         MetricName: 'Errors',
-        Dimensions: [{ Name: 'FunctionName', Value: `rimac-demo-${name}` }],
+        Dimensions: [{ Name: 'FunctionName', Value: `${prefix}-${name}` }],
         Statistic: 'Sum',
         Period: 60,
         EvaluationPeriods: 1,
@@ -49,7 +50,7 @@ export function monitoring(): Resources {
   resources.PendingAge = {
     Type: 'AWS::CloudWatch::Alarm',
     Properties: {
-      AlarmName: 'rimac-demo-pending-publications',
+      AlarmName: `${prefix}-pending-publications`,
       Namespace: 'Rimac',
       MetricName: 'PendingAge',
       Statistic: 'Maximum',
@@ -65,7 +66,7 @@ export function monitoring(): Resources {
     Type: 'AWS::Logs::MetricFilter',
     DependsOn: 'RetryLogGroup',
     Properties: {
-      LogGroupName: '/aws/lambda/rimac-demo-retry',
+      LogGroupName: `/aws/lambda/${prefix}-retry`,
       FilterPattern: '{ $.pendingAge = * }',
       MetricTransformations: [
         { MetricNamespace: 'Rimac', MetricName: 'PendingAge', MetricValue: '$.pendingAge' },
@@ -91,7 +92,7 @@ export function monitoring(): Resources {
   resources.HandledErrors = {
     Type: 'AWS::CloudWatch::Alarm',
     Properties: {
-      AlarmName: 'rimac-demo-handled-errors',
+      AlarmName: `${prefix}-handled-errors`,
       Namespace: 'Rimac',
       MetricName: 'HandledErrors',
       Statistic: 'Sum',

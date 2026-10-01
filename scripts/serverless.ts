@@ -1,32 +1,18 @@
 import { writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
-import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
+import { deployedResources } from './cloud.js';
+import { localDeployment } from '../infra/config.js';
+import { service } from '../infra/service.js';
 
 const command = process.argv[2] ?? 'package';
 if (!['package', 'deploy', 'remove', 'print'].includes(command)) {
   throw new Error('Unsupported Serverless command');
 }
-if (command === 'deploy') {
-  const client = new CloudFormationClient({ region: 'us-east-1' });
-  const result = await client.send(new DescribeStacksCommand({ StackName: 'rimac-data-demo' }));
-  process.env.AWS_ACCOUNT_ID = result.Stacks?.[0]?.StackId?.split(':')[4];
-  const outputs = new Map(
-    result.Stacks?.[0]?.Outputs?.map((item) => [item.OutputKey, item.OutputValue]),
-  );
-  for (const [name, key] of Object.entries({
-    CLUSTER_ARN: 'ClusterArn',
-    SECRET_PE: 'SecretPE',
-    SECRET_CL: 'SecretCL',
-  })) {
-    const value = outputs.get(key);
-    if (!value) {
-      throw new Error(`Missing data output: ${key}`);
-    }
-    process.env[name] = value;
-  }
-}
-const { default: config } = await import('../infra/service.js');
+const resources = ['package', 'print'].includes(command)
+  ? localDeployment()
+  : await deployedResources();
+const config = service(resources);
 await writeFile('serverless.generated.json', JSON.stringify(config, null, 2));
 const require = createRequire(import.meta.url);
 if (command === 'package' || command === 'deploy') {

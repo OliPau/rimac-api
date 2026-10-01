@@ -1,5 +1,8 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import service from '../infra/service.js';
+import { service } from '../infra/service.js';
+import { localDeployment, resource } from '../infra/config.js';
+
+const config = service(localDeployment());
 
 await mkdir('.local', { recursive: true });
 await writeFile(
@@ -8,10 +11,10 @@ await writeFile(
     {
       AWSTemplateFormatVersion: '2010-09-09',
       Resources: {
-        ...service.resources.Resources,
+        ...config.resources.Resources,
         RetryLogGroup: {
           Type: 'AWS::Logs::LogGroup',
-          Properties: { LogGroupName: '/aws/lambda/rimac-demo-retry' },
+          Properties: { LogGroupName: `/aws/lambda/${resource('retry')}` },
         },
         AppointmentLogGroup: { Type: 'AWS::Logs::LogGroup' },
         AppointmentUnderscorepeLogGroup: { Type: 'AWS::Logs::LogGroup' },

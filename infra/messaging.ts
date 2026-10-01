@@ -1,3 +1,4 @@
+import { prefix } from './config.js';
 import type { AwsArn, AwsCfGetAtt, AwsCfRef } from '@serverless/typescript';
 import type { Resources, Resource } from './types.js';
 
@@ -8,7 +9,7 @@ function queue(name: string, visibility: number, deadLetter?: string): Resource 
   return {
     Type: 'AWS::SQS::Queue',
     Properties: {
-      QueueName: `rimac-demo-${name}`,
+      QueueName: `${prefix}-${name}`,
       SqsManagedSseEnabled: true,
       MessageRetentionPeriod: deadLetter ? 345600 : 1209600,
       VisibilityTimeout: visibility,
@@ -44,9 +45,9 @@ export function messaging(): Resources {
   const resources: Resources = {
     Topic: {
       Type: 'AWS::SNS::Topic',
-      Properties: { TopicName: 'rimac-demo', KmsMasterKeyId: 'alias/aws/sns' },
+      Properties: { TopicName: prefix, KmsMasterKeyId: 'alias/aws/sns' },
     },
-    Bus: { Type: 'AWS::Events::EventBus', Properties: { Name: 'rimac-demo' } },
+    Bus: { Type: 'AWS::Events::EventBus', Properties: { Name: prefix } },
     ConfirmationDLQ: queue('confirmation-dlq', 90),
     EventDeliveryDLQ: queue('event-delivery-dlq', 90),
     ConfirmationQueue: queue('confirmations', 90, 'ConfirmationDLQ'),

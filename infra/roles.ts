@@ -1,3 +1,4 @@
+import { prefix, project } from './config.js';
 import type { AwsArn, AwsCfGetAtt } from '@serverless/typescript';
 import type { Country, Resource, Resources, Statement } from './types.js';
 
@@ -12,7 +13,7 @@ function role(name: string, statements: Statement[]): Resource {
   return {
     Type: 'AWS::IAM::Role',
     Properties: {
-      RoleName: `rimac-demo-${name}`,
+      RoleName: `${prefix}-${name}`,
       AssumeRolePolicyDocument: {
         Version: '2012-10-17',
         Statement: [
@@ -31,7 +32,7 @@ function role(name: string, statements: Statement[]): Resource {
             Statement: [
               allow(['logs:CreateLogStream', 'logs:PutLogEvents'], {
                 'Fn::Sub':
-                  'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/rimac-demo-' +
+                  `arn:aws:logs:\${AWS::Region}:\${AWS::AccountId}:log-group:/aws/lambda/${prefix}-` +
                   name +
                   ':*',
               }),
@@ -47,7 +48,9 @@ function role(name: string, statements: Statement[]): Resource {
 export function roles(cluster: string, secrets: Record<Country, string>): Resources {
   const publish = allow('sns:Publish', { Ref: 'Topic' });
   const decryptTopic = allow(['kms:GenerateDataKey', 'kms:Decrypt'], '*');
-  decryptTopic.Condition = { StringEquals: { 'kms:ViaService': 'sns.us-east-1.amazonaws.com' } };
+  decryptTopic.Condition = {
+    StringEquals: { 'kms:ViaService': `sns.${project.region}.amazonaws.com` },
+  };
   const outbox = allow(
     ['dynamodb:GetItem', 'dynamodb:UpdateItem', 'dynamodb:Query'],
     [arn('Outbox'), { 'Fn::Join': ['', [arn('Outbox'), '/index/due']] }],
