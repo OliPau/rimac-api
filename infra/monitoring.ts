@@ -72,5 +72,36 @@ export function monitoring(): Resources {
       ],
     },
   };
+  for (const group of [
+    'AppointmentLogGroup',
+    'AppointmentUnderscorepeLogGroup',
+    'AppointmentUnderscoreclLogGroup',
+  ]) {
+    resources[`${group}HandledErrors`] = {
+      Type: 'AWS::Logs::MetricFilter',
+      Properties: {
+        LogGroupName: { Ref: group },
+        FilterPattern: '{ $.level = "ERROR" }',
+        MetricTransformations: [
+          { MetricNamespace: 'Rimac', MetricName: 'HandledErrors', MetricValue: '1' },
+        ],
+      },
+    };
+  }
+  resources.HandledErrors = {
+    Type: 'AWS::CloudWatch::Alarm',
+    Properties: {
+      AlarmName: 'rimac-demo-handled-errors',
+      Namespace: 'Rimac',
+      MetricName: 'HandledErrors',
+      Statistic: 'Sum',
+      Period: 60,
+      EvaluationPeriods: 1,
+      Threshold: 0,
+      ComparisonOperator: 'GreaterThanThreshold',
+      TreatMissingData: 'notBreaching',
+      AlarmActions: [alerts],
+    },
+  };
   return resources;
 }
