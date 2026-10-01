@@ -47,18 +47,21 @@ test('rolls back failed work without hiding the original error', async () => {
   client.destroy();
 });
 
-test('retries Aurora resume responses with bounded backoff', async () => {
-  vi.useFakeTimers();
-  const { database, send, client } = setup();
-  send
-    .on(ExecuteStatementCommand)
-    .rejectsOnce(Object.assign(new Error('resuming'), { name: 'DatabaseResumingException' }))
-    .resolves({ records: [] });
-  const pending = database.execute('SELECT 1');
-  await vi.advanceTimersByTimeAsync(2000);
-  expect(await pending).toEqual([]);
-  expect(send.calls()).toHaveLength(2);
-  send.restore();
-  client.destroy();
-  vi.useRealTimers();
-});
+test.each(['DatabaseResumingException', 'ThrottlingException', 'TooManyRequestsException'])(
+  'retries transient Data API response %s with bounded backoff',
+  async (name) => {
+    vi.useFakeTimers();
+    const { database, send, client } = setup();
+    send
+      .on(ExecuteStatementCommand)
+      .rejectsOnce(Object.assign(new Error('temporarily unavailable'), { name }))
+      .resolves({ records: [] });
+    const pending = database.execute('SELECT 1');
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(await pending).toEqual([]);
+    expect(send.calls()).toHaveLength(2);
+    send.restore();
+    client.destroy();
+    vi.useRealTimers();
+  },
+);

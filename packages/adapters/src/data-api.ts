@@ -88,6 +88,8 @@ export class DataApi implements Database {
           [
             'DatabaseResumingException',
             'DatabaseUnavailableException',
+            'ThrottlingException',
+            'TooManyRequestsException',
             'ServiceUnavailableError',
             'InternalServerErrorException',
           ].includes(error.name);
