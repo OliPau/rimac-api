@@ -29,6 +29,18 @@ if (command === 'deploy') {
 const { default: config } = await import('../infra/service.js');
 await writeFile('serverless.generated.json', JSON.stringify(config, null, 2));
 const require = createRequire(import.meta.url);
+if (command === 'package' || command === 'deploy') {
+  await import('./bundle.js');
+  for (const args of [
+    ['scripts/package-local.py'],
+    ['scripts/inspect-package.py', '.local/artifacts'],
+  ]) {
+    const result = spawnSync('python', args, { stdio: 'inherit' });
+    if (result.status !== 0) {
+      process.exit(result.status ?? 1);
+    }
+  }
+}
 function run(args: string[]): void {
   const result = spawnSync(process.execPath, [require.resolve('serverless/run.js'), ...args], {
     stdio: 'inherit',
@@ -41,10 +53,6 @@ function run(args: string[]): void {
 
 if (command === 'deploy') {
   run(['package', '--config', 'serverless.generated.json']);
-  const inspection = spawnSync('python', ['scripts/inspect-package.py'], { stdio: 'inherit' });
-  if (inspection.status !== 0) {
-    process.exit(inspection.status ?? 1);
-  }
   run(['deploy', '--config', 'serverless.generated.json', '--package', '.serverless']);
 } else {
   run([command, '--config', 'serverless.generated.json']);

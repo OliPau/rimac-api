@@ -24,6 +24,7 @@ const environment = {
 const functions: Functions = {
   appointment: {
     handler: 'apps/api/src/appointment.handler',
+    package: { artifact: '.local/artifacts/appointment.zip' },
     timeout: 15,
     reservedConcurrency: 5,
     role: arn('AppointmentRole'),
@@ -43,6 +44,7 @@ const functions: Functions = {
   },
   retry: {
     handler: 'apps/api/src/retry.handler',
+    package: { artifact: '.local/artifacts/retry.zip' },
     timeout: 45,
     reservedConcurrency: 1,
     role: arn('RetryRole'),
@@ -53,6 +55,7 @@ const functions: Functions = {
 for (const country of ['PE', 'CL'] as const) {
   functions[`appointment_${country.toLowerCase()}`] = {
     handler: 'apps/api/src/worker.handler',
+    package: { artifact: `.local/artifacts/appointment_${country.toLowerCase()}.zip` },
     timeout: 60,
     reservedConcurrency: 2,
     role: arn(`WorkerRole${country}`),
@@ -96,9 +99,7 @@ export default {
     tags: { Project: 'rimac', Environment: 'demo' },
     httpApi: { cors: false },
   },
-  build: {
-    esbuild: { bundle: true, minify: false, sourcemap: false, exclude: [], target: 'node24' },
-  },
+  build: { esbuild: false },
   package: { individually: true, patterns: ['!**', '!.env*'] },
   functions,
   resources: {

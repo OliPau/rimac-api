@@ -9,7 +9,8 @@ for function, entry in {
     'appointment_cl': 'worker',
     'retry': 'retry',
 }.items():
-    source = pathlib.Path(f'.local/bundle/{entry}.cjs')
+    name = f'apps/api/src/{entry}.cjs'
+    source = pathlib.Path('.local/bundle') / name
     with zipfile.ZipFile(destination / f'{function}.zip', 'w', zipfile.ZIP_DEFLATED) as archive:
-        archive.write(source, source.name)
+        archive.write(source, name)
     print(f'Packaged {function}')
