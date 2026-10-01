@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: GitHub OIDC deployment role for OliPau/rimac-api
 Parameters:
+  RepositorySubject:
+    Type: String
+    Default: repo:OliPau@11950932/rimac-api@1400761537:environment:demo
   ClusterArn:
     Type: String
   AdminSecret:
@@ -41,7 +44,7 @@ Resources:
             Condition:
               StringEquals:
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
-                token.actions.githubusercontent.com:sub: repo:OliPau/rimac-api:environment:demo
+                token.actions.githubusercontent.com:sub: !Ref RepositorySubject
       Policies:
         - PolicyName: deploy
           PolicyDocument:
