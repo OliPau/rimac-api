@@ -1,10 +1,10 @@
 import type { SQSEvent, Context } from 'aws-lambda';
 import { RDSDataClient } from '@aws-sdk/client-rds-data';
 import { EventBridgeClient } from '@aws-sdk/client-eventbridge';
-import { Worker } from '../../../packages/core/src/worker.js';
-import { DataApi } from '../../../packages/adapters/src/data-api.js';
-import { MysqlStore } from '../../../packages/adapters/src/sql.js';
-import { CompletionPublisher } from '../../../packages/adapters/src/publish.js';
+import { Worker } from '@rimac/core/worker';
+import { DataApi } from '@rimac/adapters/data-api';
+import { MysqlStore } from '@rimac/adapters/sql';
+import { CompletionPublisher } from '@rimac/adapters/publish';
 import { env, logger } from './config.js';
 import { batch } from './batch.js';
 

@@ -1,7 +1,7 @@
 import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
 import { idempotencyKey, insured, query, request } from '@rimac/contracts';
 import { Conflict, InvalidCursor, type Appointments } from '@rimac/core';
-import type { Create } from '../../../packages/core/src/create.js';
+import type { Create } from '@rimac/core/create';
 
 function response(statusCode: number, body: unknown): APIGatewayProxyResultV2 {
   return {
