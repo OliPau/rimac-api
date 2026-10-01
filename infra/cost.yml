@@ -1,0 +1,58 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Rimac project budget and alarm destination
+Resources:
+  Alerts:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: rimac-demo-alerts
+      Tags:
+        - Key: Project
+          Value: rimac
+  AlertsPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref Alerts]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [budgets.amazonaws.com, cloudwatch.amazonaws.com]
+            Action: sns:Publish
+            Resource: !Ref Alerts
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+  Budget:
+    Type: AWS::Budgets::Budget
+    DependsOn: AlertsPolicy
+    Properties:
+      Budget:
+        BudgetName: rimac-demo-monthly
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit:
+          Amount: 10
+          Unit: USD
+        CostFilters:
+          TagKeyValue: ['user:Project$rimac']
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref Alerts
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: SNS
+              Address: !Ref Alerts
+Outputs:
+  AlertsArn:
+    Value: !Ref Alerts

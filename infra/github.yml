@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: GitHub OIDC deployment role for OliPau/rimac-api
+Parameters:
+  ClusterArn:
+    Type: String
+  AdminSecret:
+    Type: String
+  SecretPE:
+    Type: String
+  SecretCL:
+    Type: String
+Resources:
+  Artifacts:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub rimac-demo-artifacts-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: rimac
+  DeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: rimac-github-deploy
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: repo:OliPau/rimac-api:environment:demo
+      Policies:
+        - PolicyName: deploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: cloudformation:*
+                Resource:
+                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/rimac-demo/*
+              - Effect: Allow
+                Action: cloudformation:DescribeStacks
+                Resource:
+                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/rimac-data-demo/*
+              - Effect: Allow
+                Action:
+                  - cloudformation:ValidateTemplate
+                  - cloudformation:DescribeAccountLimits
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeVpcs
+                  - lambda:GetAccountSettings
+                  - logs:DescribeLogGroups
+                  - s3:ListAllMyBuckets
+                  - sts:GetCallerIdentity
+                Resource: '*'
+              - Effect: Allow
+                Action: s3:*
+                Resource:
+                  - arn:aws:s3:::rimac-demo-*
+                  - arn:aws:s3:::rimac-demo-*/*
+              - Effect: Allow
+                Action:
+                  - lambda:*
+                  - logs:*
+                  - dynamodb:*
+                  - sns:*
+                  - sqs:*
+                  - events:*
+                  - cloudwatch:*
+                Resource:
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:rimac-demo-*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/rimac-demo-*
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/rimac-demo-*
+                  - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:rimac-demo*
+                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:rimac-demo-*
+                  - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/rimac-demo
+                  - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/rimac-demo*
+                  - !Sub arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:rimac-demo-*
+              - Effect: Allow
+                Action:
+                  - lambda:CreateEventSourceMapping
+                  - lambda:UpdateEventSourceMapping
+                  - lambda:DeleteEventSourceMapping
+                  - lambda:GetEventSourceMapping
+                  - lambda:ListEventSourceMappings
+                  - cloudwatch:PutMetricAlarm
+                  - cloudwatch:DescribeAlarms
+                Resource: '*'
+              - Effect: Allow
+                Action: apigateway:*
+                Resource: !Sub arn:aws:apigateway:${AWS::Region}::/apis*
+              - Effect: Allow
+                Action:
+                  - iam:GetRole
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:PutRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:PassRole
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                  - iam:UpdateAssumeRolePolicy
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/rimac-demo-*
+              - Effect: Allow
+                Action: budgets:*
+                Resource: !Sub arn:aws:budgets::${AWS::AccountId}:budget/rimac-demo-monthly
+              - Effect: Allow
+                Action: rds-data:*
+                Resource: !Ref ClusterArn
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: [!Ref AdminSecret, !Ref SecretPE, !Ref SecretCL]
+Outputs:
+  DeployRoleArn:
+    Value: !GetAtt DeployRole.Arn
