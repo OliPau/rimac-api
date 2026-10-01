@@ -37,8 +37,9 @@ export class DynamoOutbox implements Outbox {
       this.leases.set(id, { owner, attempts: Number(result.Attributes?.attempts) });
       return event;
     } catch (error) {
-      if (error instanceof Error && error.name === 'ConditionalCheckFailedException')
+      if (error instanceof Error && error.name === 'ConditionalCheckFailedException') {
         return undefined;
+      }
       throw error;
     }
   }
@@ -53,7 +54,9 @@ export class DynamoOutbox implements Outbox {
 
   private async release(event: Event, sent: boolean): Promise<void> {
     const lease = this.leases.get(event.appointmentId);
-    if (!lease) throw new Error('Missing outbox lease');
+    if (!lease) {
+      throw new Error('Missing outbox lease');
+    }
     const seconds = Math.floor(this.now() / 1000);
     const delay = Math.min(900, 2 ** Math.min(lease.attempts, 10) + Math.floor(Math.random() * 10));
     try {
@@ -91,8 +94,29 @@ export class DynamoOutbox implements Outbox {
       }),
     );
     return (result.Items ?? []).map((item) => {
-      if (typeof item.id !== 'string') throw new Error('Invalid outbox identifier');
+      if (typeof item.id !== 'string') {
+        throw new Error('Invalid outbox identifier');
+      }
       return item.id;
     });
+  }
+
+  async pendingAge(): Promise<number> {
+    const result = await this.client.send(
+      new QueryCommand({
+        TableName: this.table,
+        IndexName: 'due',
+        Limit: 1,
+        KeyConditionExpression: '#state = :pending',
+        ExpressionAttributeNames: { '#state': 'state' },
+        ExpressionAttributeValues: { ':pending': 'pending' },
+      }),
+    );
+    const first = result.Items?.[0];
+    if (!first) {
+      return 0;
+    }
+    const event = eventSchema.parse(first.event);
+    return Math.max(0, Math.floor((this.now() - Date.parse(event.occurredAt)) / 1000));
   }
 }
