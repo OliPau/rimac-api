@@ -30,7 +30,14 @@ export function appointmentWrites(tables: Tables, event: Event, now: number): Wr
     {
       Put: {
         TableName: tables.outbox,
-        Item: { id: appointmentId, event, state: 'pending', dueAt: now, attempts: 0 },
+        Item: {
+          id: appointmentId,
+          event,
+          state: 'pending',
+          dueAt: now,
+          pendingSince: Date.parse(occurredAt),
+          attempts: 0,
+        },
         ConditionExpression: 'attribute_not_exists(id)',
       },
     },

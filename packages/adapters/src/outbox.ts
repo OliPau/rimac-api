@@ -3,6 +3,12 @@ import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/li
 import { event as eventSchema } from '@rimac/contracts';
 import type { Event, Outbox } from '@rimac/core';
 
+const leaseSeconds = 60;
+const publishedRetentionSeconds = 24 * 60 * 60;
+const maximumRetrySeconds = 15 * 60;
+const maximumRetryExponent = 10;
+const retryJitterSeconds = 10;
+
 export class DynamoOutbox implements Outbox {
   private readonly leases = new Map<string, { owner: string; attempts: number }>();
 
@@ -24,7 +30,7 @@ export class DynamoOutbox implements Outbox {
           ConditionExpression: '#state = :pending AND dueAt <= :now',
           ExpressionAttributeNames: { '#state': 'state' },
           ExpressionAttributeValues: {
-            ':lease': seconds + 60,
+            ':lease': seconds + leaseSeconds,
             ':owner': owner,
             ':one': 1,
             ':pending': 'pending',
@@ -58,7 +64,11 @@ export class DynamoOutbox implements Outbox {
       throw new Error('Missing outbox lease');
     }
     const seconds = Math.floor(this.now() / 1000);
-    const delay = Math.min(900, 2 ** Math.min(lease.attempts, 10) + Math.floor(Math.random() * 10));
+    const delay = Math.min(
+      maximumRetrySeconds,
+      2 ** Math.min(lease.attempts, maximumRetryExponent) +
+        Math.floor(Math.random() * retryJitterSeconds),
+    );
     try {
       await this.client.send(
         new UpdateCommand({
@@ -66,13 +76,13 @@ export class DynamoOutbox implements Outbox {
           Key: { id: event.appointmentId },
           ConditionExpression: 'leaseOwner = :owner',
           UpdateExpression: sent
-            ? 'SET #state = :sent, expiresAt = :expiry REMOVE dueAt, leaseOwner'
+            ? 'SET #state = :sent, expiresAt = :expiry REMOVE dueAt, leaseOwner, pendingSince'
             : 'SET dueAt = :next REMOVE leaseOwner',
           ...(sent ? { ExpressionAttributeNames: { '#state': 'state' } } : {}),
           ExpressionAttributeValues: {
             ':owner': lease.owner,
             ...(sent
-              ? { ':sent': 'sent', ':expiry': seconds + 86400 }
+              ? { ':sent': 'sent', ':expiry': seconds + publishedRetentionSeconds }
               : { ':next': seconds + delay }),
           },
         }),
@@ -118,5 +128,26 @@ export class DynamoOutbox implements Outbox {
     }
     const event = eventSchema.parse(first.event);
     return Math.max(0, Math.floor((this.now() - Date.parse(event.occurredAt)) / 1000));
+  }
+
+  async oldestPendingAge(): Promise<number> {
+    const result = await this.client.send(
+      new QueryCommand({
+        TableName: this.table,
+        IndexName: 'pending-age',
+        Limit: 1,
+        KeyConditionExpression: '#state = :pending',
+        ExpressionAttributeNames: { '#state': 'state' },
+        ExpressionAttributeValues: { ':pending': 'pending' },
+      }),
+    );
+    const first = result.Items?.[0];
+    if (!first) {
+      return 0;
+    }
+    if (typeof first.pendingSince !== 'number' || !Number.isFinite(first.pendingSince)) {
+      throw new Error('Invalid pending publication timestamp');
+    }
+    return Math.max(0, Math.floor((this.now() - first.pendingSince) / 1000));
   }
 }

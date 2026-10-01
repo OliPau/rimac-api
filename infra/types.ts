@@ -32,7 +32,7 @@ export type Table = {
     TimeToLiveSpecification?: { AttributeName: string; Enabled: boolean };
     GlobalSecondaryIndexes?: {
       IndexName: string;
-      Projection: { ProjectionType: 'ALL' };
+      Projection: { ProjectionType: 'ALL' | 'KEYS_ONLY' };
       KeySchema: Key[];
     }[];
   };

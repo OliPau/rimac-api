@@ -1,6 +1,7 @@
+import { backfillPending } from '../scripts/backfill.js';
 import { beforeAll, afterAll, expect, test } from 'vitest';
 import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { DynamoAppointments } from '../packages/adapters/src/dynamo.js';
 import { DynamoOutbox } from '../packages/adapters/src/outbox.js';
 
@@ -34,12 +35,21 @@ beforeAll(async () => {
             ? [
                 { AttributeName: 'state', AttributeType: 'S' as const },
                 { AttributeName: 'dueAt', AttributeType: 'N' as const },
+                { AttributeName: 'pendingSince', AttributeType: 'N' as const },
               ]
             : []),
         ],
         ...(name === 'outbox'
           ? {
               GlobalSecondaryIndexes: [
+                {
+                  IndexName: 'pending-age',
+                  Projection: { ProjectionType: 'KEYS_ONLY' },
+                  KeySchema: [
+                    { AttributeName: 'state', KeyType: 'HASH' },
+                    { AttributeName: 'pendingSince', KeyType: 'RANGE' },
+                  ],
+                },
                 {
                   IndexName: 'due',
                   Projection: { ProjectionType: 'ALL' },
@@ -151,4 +161,42 @@ test('confirmation is idempotent and never creates orphan records', async () => 
   expect((await store.create({ ...input, scheduleId: 126 })).status).toBe('pending');
   await expect(store.confirm({ ...confirmation, countryISO: 'CL' })).rejects.toThrow();
   await expect(store.confirm({ ...confirmation, insuredId: '99999' })).rejects.toThrow();
+});
+
+test('keeps original pending age through leases, backoff and legacy migration', async () => {
+  const documents = DynamoDBDocumentClient.from(client);
+  const clock = Date.now() + 100000;
+  const oldStore = new DynamoAppointments(documents, tables, () => clock - 600000);
+  const newStore = new DynamoAppointments(documents, tables, () => clock - 30000);
+  const old = await oldStore.create({ ...input, insuredId: '00666' });
+  await newStore.create({ ...input, insuredId: '00667' });
+  const outbox = new DynamoOutbox(documents, tables.outbox, () => clock);
+  const claimed = await outbox.claim(old.appointmentId);
+  expect(claimed).toBeDefined();
+  await documents.send(
+    new UpdateCommand({
+      TableName: tables.outbox,
+      Key: { id: old.appointmentId },
+      UpdateExpression: 'REMOVE pendingSince',
+    }),
+  );
+  expect(await backfillPending(documents, tables.outbox)).toBe(1);
+  expect(await backfillPending(documents, tables.outbox)).toBe(0);
+  expect(await outbox.oldestPendingAge()).toBe(600);
+  if (!claimed) {
+    throw new Error('Missing event');
+  }
+  await outbox.failed(claimed);
+  expect(await outbox.oldestPendingAge()).toBe(600);
+  const future = new DynamoOutbox(documents, tables.outbox, () => clock + 1000000);
+  const recovered = await future.claim(old.appointmentId);
+  if (!recovered) {
+    throw new Error('Missing recovered event');
+  }
+  await future.sent(recovered);
+  const row = await documents.send(
+    new GetCommand({ TableName: tables.outbox, Key: { id: old.appointmentId } }),
+  );
+  expect(row.Item?.pendingSince).toBeUndefined();
+  expect(await outbox.oldestPendingAge()).toBeLessThan(600);
 });

@@ -32,8 +32,17 @@ export function tables(): Record<'Appointments' | 'Keys' | 'Outbox', Table> {
   resources.Outbox.Properties.AttributeDefinitions.push(
     { AttributeName: 'state', AttributeType: 'S' },
     { AttributeName: 'dueAt', AttributeType: 'N' },
+    { AttributeName: 'pendingSince', AttributeType: 'N' },
   );
   resources.Outbox.Properties.GlobalSecondaryIndexes = [
+    {
+      IndexName: 'pending-age',
+      Projection: { ProjectionType: 'KEYS_ONLY' },
+      KeySchema: [
+        { AttributeName: 'state', KeyType: 'HASH' },
+        { AttributeName: 'pendingSince', KeyType: 'RANGE' },
+      ],
+    },
     {
       IndexName: 'due',
       Projection: { ProjectionType: 'ALL' },

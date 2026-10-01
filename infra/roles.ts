@@ -53,7 +53,11 @@ export function roles(cluster: string, secrets: Record<Country, string>): Resour
   };
   const outbox = allow(
     ['dynamodb:GetItem', 'dynamodb:UpdateItem', 'dynamodb:Query'],
-    [arn('Outbox'), { 'Fn::Join': ['', [arn('Outbox'), '/index/due']] }],
+    [
+      arn('Outbox'),
+      { 'Fn::Join': ['', [arn('Outbox'), '/index/due']] },
+      { 'Fn::Join': ['', [arn('Outbox'), '/index/pending-age']] },
+    ],
   );
   const consume = (queue: string): Statement =>
     allow(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'], arn(queue));
