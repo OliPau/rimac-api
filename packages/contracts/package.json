@@ -1,1 +1,10 @@
-{ "name": "@rimac/contracts", "private": true, "type": "module", "exports": "./src/index.ts" }
+{
+  "name": "@rimac/contracts",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@rimac/core": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}
