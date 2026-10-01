@@ -6,6 +6,13 @@ export default tseslint.config(
   },
   ...tseslint.configs.recommendedTypeChecked,
   {
+    files: ['tests/**/*.ts'],
+    rules: {
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/unbound-method': 'off',
+    },
+  },
+  {
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
     },
