@@ -51,6 +51,9 @@ for (const countryISO of ['PE', 'CL']) {
   for (const result of repeated) {
     assert.deepEqual(result, accepted);
   }
+  const withoutKey = await call('/appointments', body);
+  assert.equal(withoutKey.status, 202);
+  assert.deepEqual(acceptance.parse(await withoutKey.json()), accepted);
   assert.equal(
     (await call('/appointments', { ...body, scheduleId: scheduleId + 1 }, key)).status,
     409,

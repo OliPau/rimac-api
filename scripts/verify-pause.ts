@@ -9,7 +9,7 @@ import { z } from 'zod';
 const config = { region: 'us-east-1' };
 const metrics = new CloudWatchClient(config);
 let pausedAt: string | undefined;
-const started = new Date();
+const started = new Date(Date.now() - 1000);
 for (let attempt = 0; attempt < 25; attempt++) {
   const result = await metrics.send(
     new GetMetricStatisticsCommand({
