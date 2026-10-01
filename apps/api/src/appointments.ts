@@ -4,7 +4,8 @@ import { SNSClient } from '@aws-sdk/client-sns';
 import { DynamoAppointments } from '@rimac/adapters/dynamo';
 import { DynamoOutbox } from '@rimac/adapters/outbox';
 import { SnsPublisher } from '@rimac/adapters/publish';
-import { Create, Dispatcher } from '@rimac/core/create';
+import { Create } from '@rimac/core/create';
+import { Dispatcher } from '@rimac/core/dispatch';
 import { env, logger } from './config.js';
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({ maxAttempts: 3 }));

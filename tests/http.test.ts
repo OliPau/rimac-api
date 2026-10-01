@@ -2,7 +2,8 @@ import { expect, test, vi } from 'vitest';
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
 import { httpHandler } from '../apps/api/src/http.js';
 import { batch } from '../apps/api/src/batch.js';
-import { Create, Dispatcher } from '../packages/core/src/create.js';
+import { Create } from '../packages/core/src/create.js';
+import { Dispatcher } from '../packages/core/src/dispatch.js';
 import { Conflict, InvalidCursor, type Appointments } from '../packages/core/src/index.js';
 
 const appointments: Appointments = {

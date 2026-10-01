@@ -1,5 +1,6 @@
 import { expect, test, vi } from 'vitest';
-import { Create, Dispatcher } from '../packages/core/src/create.js';
+import { Create } from '../packages/core/src/create.js';
+import { Dispatcher } from '../packages/core/src/dispatch.js';
 import { Worker } from '../packages/core/src/worker.js';
 import type { Appointments, Event, Outbox } from '../packages/core/src/index.js';
 
