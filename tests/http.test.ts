@@ -5,6 +5,7 @@ import { batch } from '../apps/api/src/batch.js';
 import { Create } from '../packages/core/src/create.js';
 import { Dispatcher } from '../packages/core/src/dispatch.js';
 import { Conflict, InvalidCursor, type Appointments } from '../packages/core/src/index.js';
+import { event, sqs } from './fixtures.js';
 
 const appointments: Appointments = {
   create: vi.fn(async () => ({
@@ -114,4 +115,45 @@ test('reports only failed SQS records', async () => {
     vi.fn(),
   );
   expect(result).toEqual({ batchItemFailures: [{ itemIdentifier: 'bad' }] });
+});
+
+test('handles encoded bodies, missing bodies, size limits and optional headers', async () => {
+  const valid = JSON.stringify({ insuredId: '00123', scheduleId: 1, countryISO: 'PE' });
+  const encoded = {
+    ...input('POST /appointments', Buffer.from(valid).toString('base64')),
+    isBase64Encoded: true,
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'valid-key' },
+  };
+  expect(await handler(encoded)).toMatchObject({ statusCode: 202 });
+  expect(appointments.create).toHaveBeenLastCalledWith(JSON.parse(valid), 'valid-key');
+  expect(await handler({ ...encoded, headers: { 'idempotency-key': 'bad key' } })).toMatchObject({
+    statusCode: 400,
+  });
+  expect(await handler(input('POST /appointments'))).toMatchObject({ statusCode: 400 });
+  expect(await handler({ ...input('POST /appointments'), isBase64Encoded: true })).toMatchObject({
+    statusCode: 400,
+  });
+  expect(await handler(input('POST /appointments', 'x'.repeat(4097)))).toMatchObject({
+    statusCode: 413,
+  });
+  expect(
+    await handler({
+      ...input('GET /appointments/{insuredId}'),
+      pathParameters: { insuredId: '00123' },
+      queryStringParameters: { limit: '101' },
+    }),
+  ).toMatchObject({ statusCode: 400 });
+  vi.mocked(appointments.create).mockRejectedValueOnce('non-error rejection');
+  expect(await handler(input('POST /appointments', valid))).toMatchObject({ statusCode: 503 });
+  expect(report).toHaveBeenLastCalledWith('UnknownError');
+});
+
+test('continues a mixed SQS batch after unknown failures', async () => {
+  const action = vi.fn().mockRejectedValueOnce('unknown').mockResolvedValueOnce(undefined);
+  const reportBatch = vi.fn();
+  expect(await batch(sqs(event, event), action, reportBatch)).toEqual({
+    batchItemFailures: [{ itemIdentifier: 'message-0' }],
+  });
+  expect(action).toHaveBeenCalledTimes(2);
+  expect(reportBatch).toHaveBeenCalledWith('message-0', 'UnknownError');
 });
