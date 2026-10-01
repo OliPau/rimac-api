@@ -2,6 +2,7 @@ import { beforeAll, afterAll, expect, test } from 'vitest';
 import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { DynamoAppointments } from '../packages/adapters/src/dynamo.js';
+import { DynamoOutbox } from '../packages/adapters/src/outbox.js';
 
 const client = new DynamoDBClient({
   region: 'us-east-1',
@@ -24,10 +25,32 @@ beforeAll(async () => {
       new CreateTableCommand({
         TableName,
         BillingMode: 'PAY_PER_REQUEST',
-        AttributeDefinitions: attributes.map((AttributeName) => ({
-          AttributeName,
-          AttributeType: 'S',
-        })),
+        AttributeDefinitions: [
+          ...attributes.map((AttributeName) => ({
+            AttributeName,
+            AttributeType: 'S' as const,
+          })),
+          ...(name === 'outbox'
+            ? [
+                { AttributeName: 'state', AttributeType: 'S' as const },
+                { AttributeName: 'dueAt', AttributeType: 'N' as const },
+              ]
+            : []),
+        ],
+        ...(name === 'outbox'
+          ? {
+              GlobalSecondaryIndexes: [
+                {
+                  IndexName: 'due',
+                  Projection: { ProjectionType: 'ALL' },
+                  KeySchema: [
+                    { AttributeName: 'state', KeyType: 'HASH' },
+                    { AttributeName: 'dueAt', KeyType: 'RANGE' },
+                  ],
+                },
+              ],
+            }
+          : {}),
         KeySchema: attributes.map((AttributeName, index) => ({
           AttributeName,
           KeyType: index === 0 ? 'HASH' : 'RANGE',
@@ -35,6 +58,27 @@ beforeAll(async () => {
       }),
     );
   }
+});
+
+test('leases pending publications and recovers abandoned or failed claims', async () => {
+  const accepted = await store.create({ ...input, insuredId: '00444' });
+  let clock = Date.now();
+  const outbox = new DynamoOutbox(DynamoDBDocumentClient.from(client), tables.outbox, () => clock);
+  const second = new DynamoOutbox(DynamoDBDocumentClient.from(client), tables.outbox, () => clock);
+  const claimed = await outbox.claim(accepted.appointmentId);
+  expect(claimed).toBeDefined();
+  expect(await second.claim(accepted.appointmentId)).toBeUndefined();
+  clock += 61000;
+  const recovered = await second.claim(accepted.appointmentId);
+  if (!claimed || !recovered) throw new Error('Missing claimed event');
+  await expect(outbox.sent(claimed)).rejects.toThrow();
+  await second.failed(recovered);
+  clock += 100000;
+  expect(await second.due(25)).toContain(accepted.appointmentId);
+  const retry = await second.claim(accepted.appointmentId);
+  if (!retry) throw new Error('Missing retry event');
+  await second.sent(retry);
+  expect(await outbox.claim(accepted.appointmentId)).toBeUndefined();
 });
 afterAll(async () => {
   for (const TableName of Object.values(tables))
