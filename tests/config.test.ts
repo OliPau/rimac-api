@@ -3,6 +3,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { deployment, localDeployment, project, resource } from '../infra/config.js';
 import { service } from '../infra/service.js';
+import type { Resources } from '../infra/types.js';
 import { stackOutputs } from '../scripts/cloud.js';
 
 test('keeps deployed names and rejects local placeholders as deployment input', () => {
@@ -17,7 +18,8 @@ test('keeps deployed names and rejects local placeholders as deployment input', 
   expect(config.functions.swagger?.environment).toEqual({
     SWAGGER_SECRET_ARN: localDeployment().swaggerSecret,
   });
-  const swaggerRole = JSON.stringify(config.resources.Resources.SwaggerRole);
+  const resources: Resources = config.resources.Resources;
+  const swaggerRole = JSON.stringify(resources.SwaggerRole);
   expect(swaggerRole).toContain(localDeployment().swaggerSecret);
   expect(swaggerRole).toContain('secretsmanager:GetSecretValue');
   for (const action of ['dynamodb:', 'sns:', 'sqs:', 'rds-data:', 'PutSecretValue']) {
