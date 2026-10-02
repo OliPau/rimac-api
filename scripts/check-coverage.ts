@@ -7,7 +7,7 @@ const metric = z.object({ total: z.number(), covered: z.number() });
 const summary = z.record(z.string(), z.object({ lines: metric, branches: metric }));
 const report = summary.parse(JSON.parse(await readFile('coverage/coverage-summary.json', 'utf8')));
 let files = 0;
-for await (const file of glob(['apps/api/src/**/*.ts', 'packages/*/src/**/*.ts'])) {
+for await (const file of glob(['src/**/*.ts'])) {
   const entry = report[resolve(file)];
   assert.ok(entry, `Coverage omitted backend file: ${file}`);
   assert.equal(entry.lines.covered, entry.lines.total, `Uncovered lines: ${file}`);

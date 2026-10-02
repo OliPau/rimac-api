@@ -3,7 +3,7 @@ import { project, stacks } from '../infra/config.js';
 import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { RDSDataClient } from '@aws-sdk/client-rds-data';
-import { DataApi } from '../packages/adapters/src/data-api.js';
+import { DataApi } from '#infrastructure/persistence/mysql/data-api';
 import { z } from 'zod';
 
 const evidence = z

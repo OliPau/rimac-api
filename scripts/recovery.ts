@@ -8,10 +8,10 @@ import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { SQSClient, GetQueueUrlCommand, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { RDSDataClient } from '@aws-sdk/client-rds-data';
-import { DynamoAppointments } from '../packages/adapters/src/dynamo.js';
-import { DynamoOutbox } from '../packages/adapters/src/outbox.js';
-import { MysqlStore } from '../packages/adapters/src/sql.js';
-import { DataApi } from '../packages/adapters/src/data-api.js';
+import { DynamoAppointments } from '#infrastructure/persistence/dynamo/repository';
+import { DynamoOutbox } from '#infrastructure/persistence/dynamo/outbox';
+import { MysqlStore } from '#infrastructure/persistence/mysql/repository';
+import { DataApi } from '#infrastructure/persistence/mysql/data-api';
 
 const config = { region: project.region };
 const dynamo = DynamoDBDocumentClient.from(new DynamoDBClient(config));

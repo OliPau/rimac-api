@@ -2,8 +2,12 @@ import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { createConnection, type Connection } from 'mysql2/promise';
 import { beforeAll, afterAll, expect, test } from 'vitest';
-import { MysqlStore, type Database, type Parameters } from '../packages/adapters/src/sql.js';
-import type { Event } from '../packages/core/src/index.js';
+import {
+  MysqlStore,
+  type Database,
+  type Parameters,
+} from '#infrastructure/persistence/mysql/repository';
+import type { Event } from '#domain/appointments/index';
 
 let connection: Connection;
 

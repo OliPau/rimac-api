@@ -17,7 +17,7 @@ export function service({ cluster, secrets, account }: Deployment) {
   };
   const functions: Functions = {
     appointment: {
-      handler: 'apps/api/src/appointment.handler',
+      handler: 'src/handlers/appointment.handler',
       package: { artifact: '.local/artifacts/appointment.zip' },
       timeout: 15,
       reservedConcurrency: 5,
@@ -37,7 +37,7 @@ export function service({ cluster, secrets, account }: Deployment) {
       ],
     },
     retry: {
-      handler: 'apps/api/src/retry.handler',
+      handler: 'src/handlers/retry.handler',
       package: { artifact: '.local/artifacts/retry.zip' },
       timeout: 45,
       reservedConcurrency: 1,
@@ -48,7 +48,7 @@ export function service({ cluster, secrets, account }: Deployment) {
   };
   for (const country of ['PE', 'CL'] as const) {
     functions[`appointment_${country.toLowerCase()}`] = {
-      handler: 'apps/api/src/worker.handler',
+      handler: 'src/handlers/worker.handler',
       package: { artifact: `.local/artifacts/appointment_${country.toLowerCase()}.zip` },
       timeout: 60,
       reservedConcurrency: 2,

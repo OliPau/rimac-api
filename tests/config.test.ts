@@ -13,7 +13,7 @@ test('keeps deployed names and rejects local placeholders as deployment input', 
   expect(config.resources.Resources.Appointments?.Properties.TableName).toBe(
     'rimac-demo-appointments',
   );
-  expect(config.functions.appointment?.handler).toBe('apps/api/src/appointment.handler');
+  expect(config.functions.appointment?.handler).toBe('src/handlers/appointment.handler');
   expect(deployment.safeParse(localDeployment()).success).toBe(false);
   expect(deployment.safeParse({}).success).toBe(false);
 });

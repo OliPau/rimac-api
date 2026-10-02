@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { z } from 'zod';
 import SwaggerParser from '@apidevtools/swagger-parser';
-import { request, acceptance, appointment } from '../packages/contracts/src/index.js';
+import { request, acceptance, appointment } from '#infrastructure/shared/appointment.schema';
 
 const document = {
   openapi: '3.1.0',

@@ -1,10 +1,16 @@
+import { ListAppointments } from '#application/appointments/use-cases/list';
 import { expect, test, vi } from 'vitest';
 import type { APIGatewayProxyEventV2 } from 'aws-lambda';
-import { httpHandler } from '../apps/api/src/http.js';
-import { batch } from '../apps/api/src/batch.js';
-import { Create } from '../packages/core/src/create.js';
-import { Dispatcher } from '../packages/core/src/dispatch.js';
-import { Conflict, InvalidCursor, type Appointments } from '../packages/core/src/index.js';
+import { httpHandler } from '#infrastructure/http/handler';
+import { batch } from '#infrastructure/sqs/batch';
+import { CreateAppointment } from '#application/appointments/use-cases/create';
+import { DispatchPendingAppointments } from '#application/appointments/use-cases/dispatch';
+import {
+  Conflict,
+  InvalidCursor,
+  InvalidPagination,
+  type Appointments,
+} from '#application/appointments/index';
 import { event, sqs } from './fixtures.js';
 
 const appointments: Appointments = {
@@ -17,12 +23,16 @@ const appointments: Appointments = {
   list: vi.fn(async () => ({ items: [] })),
   confirm: vi.fn(),
 };
-const dispatcher = new Dispatcher(
+const dispatcher = new DispatchPendingAppointments(
   { claim: vi.fn(), sent: vi.fn(), failed: vi.fn(), due: vi.fn() },
   { publish: vi.fn() },
 );
 const report = vi.fn();
-const handler = httpHandler(new Create(appointments, dispatcher, vi.fn()), appointments, report);
+const handler = httpHandler(
+  new CreateAppointment(appointments, dispatcher, vi.fn()),
+  new ListAppointments(appointments),
+  report,
+);
 
 function input(routeKey: string, body?: string): APIGatewayProxyEventV2 {
   return {
@@ -156,4 +166,25 @@ test('continues a mixed SQS batch after unknown failures', async () => {
   });
   expect(action).toHaveBeenCalledTimes(2);
   expect(reportBatch).toHaveBeenCalledWith('message-0', 'UnknownError');
+});
+
+test('maps application pagination errors at the HTTP boundary', async () => {
+  vi.mocked(appointments.list).mockRejectedValueOnce(new InvalidPagination());
+  expect(
+    await handler({
+      ...input('GET /appointments/{insuredId}'),
+      pathParameters: { insuredId: '00123' },
+    }),
+  ).toMatchObject({ statusCode: 400 });
+});
+
+test('translates pagination parameters without changing an opaque cursor', async () => {
+  expect(
+    await handler({
+      ...input('GET /appointments/{insuredId}'),
+      pathParameters: { insuredId: '00123' },
+      queryStringParameters: { limit: '5', cursor: 'opaque-cursor' },
+    }),
+  ).toMatchObject({ statusCode: 200 });
+  expect(appointments.list).toHaveBeenLastCalledWith('00123', 5, 'opaque-cursor');
 });

@@ -1,5 +1,5 @@
 import { expect, test, vi } from 'vitest';
-import { MysqlStore, type Database, type Sql } from '../packages/adapters/src/sql.js';
+import { MysqlStore, type Database, type Sql } from '#infrastructure/persistence/mysql/repository';
 import { event } from './fixtures.js';
 
 test.each([

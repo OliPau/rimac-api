@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
 import { RDSDataClient } from '@aws-sdk/client-rds-data';
-import { DataApi } from '../packages/adapters/src/data-api.js';
-import { MysqlStore } from '../packages/adapters/src/sql.js';
-import type { Event } from '../packages/core/src/index.js';
+import { DataApi } from '#infrastructure/persistence/mysql/data-api';
+import { MysqlStore } from '#infrastructure/persistence/mysql/repository';
+import type { Event } from '#domain/appointments/index';
 
 const config = { region: project.region };
 const outputs = await stackOutputs(stacks.data);

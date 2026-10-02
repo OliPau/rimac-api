@@ -4,7 +4,7 @@ import {
   UpdateCommand,
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb';
-import { event } from '../packages/contracts/src/index.js';
+import { event } from '#infrastructure/messaging/dto/event.dto';
 
 export async function backfillPending(client: DynamoDBDocumentClient, table: string) {
   let cursor: QueryCommandInput['ExclusiveStartKey'];

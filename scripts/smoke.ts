@@ -4,7 +4,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import assert from 'node:assert/strict';
-import { acceptance, appointment } from '../packages/contracts/src/index.js';
+import { acceptance, appointment } from '#infrastructure/shared/appointment.schema';
 import { z } from 'zod';
 
 const endpoint = process.env.API_URL ?? (await stackOutputs(stacks.application)).get('HttpApiUrl');

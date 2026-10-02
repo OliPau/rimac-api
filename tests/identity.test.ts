@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
-import { accept, identity, requested } from '../packages/core/src/appointment.js';
+import { identity } from '#domain/appointments/helpers/identity';
+import { accept, requested } from '#application/appointments/helpers/registration';
 
 test('preserves the deployed business identifier and acceptance contract', () => {
   const input = { insuredId: '00123', countryISO: 'PE' as const, scheduleId: 123 };

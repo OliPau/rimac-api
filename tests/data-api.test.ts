@@ -7,7 +7,7 @@ import {
 } from '@aws-sdk/client-rds-data';
 import { expect, test, vi } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import { DataApi } from '../packages/adapters/src/data-api.js';
+import { DataApi } from '#infrastructure/persistence/mysql/data-api';
 
 function setup() {
   const client = new RDSDataClient({ region: 'us-east-1' });

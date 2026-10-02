@@ -4,9 +4,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 await mkdir('.local/bundle', { recursive: true });
 const result = await build({
   entryPoints: {
-    'apps/api/src/appointment': 'apps/api/src/appointment.ts',
-    'apps/api/src/worker': 'apps/api/src/worker.ts',
-    'apps/api/src/retry': 'apps/api/src/retry.ts',
+    'src/handlers/appointment': 'src/handlers/appointment.ts',
+    'src/handlers/worker': 'src/handlers/worker.ts',
+    'src/handlers/retry': 'src/handlers/retry.ts',
   },
   outdir: '.local/bundle',
   bundle: true,

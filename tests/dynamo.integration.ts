@@ -2,8 +2,8 @@ import { backfillPending } from '../scripts/backfill.js';
 import { beforeAll, afterAll, expect, test } from 'vitest';
 import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { DynamoAppointments } from '../packages/adapters/src/dynamo.js';
-import { DynamoOutbox } from '../packages/adapters/src/outbox.js';
+import { DynamoAppointments } from '#infrastructure/persistence/dynamo/repository';
+import { DynamoOutbox } from '#infrastructure/persistence/dynamo/outbox';
 
 const client = new DynamoDBClient({
   region: 'us-east-1',

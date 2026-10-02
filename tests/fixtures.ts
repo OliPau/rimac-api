@@ -1,5 +1,5 @@
 import type { APIGatewayProxyEventV2, Context, SQSEvent } from 'aws-lambda';
-import type { Event } from '../packages/core/src/index.js';
+import type { Event } from '#domain/appointments/index';
 
 export const event: Event = {
   version: 1,

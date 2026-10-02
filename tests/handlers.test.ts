@@ -36,7 +36,7 @@ afterEach(() => {
 });
 
 test('composes the HTTP entrypoint with durable persistence and SNS publication', async () => {
-  const { handler } = await import('../apps/api/src/appointment.js');
+  const { handler } = await import('../src/handlers/appointment.js');
   expect(await handler(http('POST /appointments', input), context)).toMatchObject({
     statusCode: 202,
   });
@@ -48,7 +48,7 @@ test('composes the HTTP entrypoint with durable persistence and SNS publication'
 
 test('keeps acceptance when immediate dispatch fails and logs the failure', async () => {
   dynamo.on(UpdateCommand).rejects(new Error('unavailable'));
-  const { handler } = await import('../apps/api/src/appointment.js');
+  const { handler } = await import('../src/handlers/appointment.js');
   expect(await handler(http('POST /appointments', input), context)).toMatchObject({
     statusCode: 202,
   });
@@ -61,7 +61,7 @@ test('keeps acceptance when immediate dispatch fails and logs the failure', asyn
 });
 
 test('confirms SQS messages and reports only failed records', async () => {
-  const { handler } = await import('../apps/api/src/appointment.js');
+  const { handler } = await import('../src/handlers/appointment.js');
   expect(await handler(sqs({ ...event, type: 'appointment.completed' }, event), context)).toEqual({
     batchItemFailures: [{ itemIdentifier: 'message-1' }],
   });
@@ -80,7 +80,7 @@ test('scheduled entrypoint recovers due messages and emits pending age', async (
     .on(QueryCommand)
     .resolvesOnce({ Items: [{ id: event.appointmentId }] })
     .resolves({ Items: [] });
-  const { handler } = await import('../apps/api/src/retry.js');
+  const { handler } = await import('../src/handlers/retry.js');
   await handler();
   expect(sns.commandCalls(PublishCommand)).toHaveLength(1);
   expect(Logger.prototype.info).toHaveBeenCalledWith('OutboxRetry', { count: 1, pendingAge: 0 });
@@ -88,7 +88,7 @@ test('scheduled entrypoint recovers due messages and emits pending age', async (
 
 test('rejects missing runtime configuration', async () => {
   vi.stubEnv('APPOINTMENTS_TABLE', '');
-  await expect(import('../apps/api/src/appointments.js')).rejects.toThrow(
+  await expect(import('../src/composition/dynamo.js')).rejects.toThrow(
     'Missing configuration: APPOINTMENTS_TABLE',
   );
 });

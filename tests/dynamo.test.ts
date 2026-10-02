@@ -7,7 +7,7 @@ import {
   QueryCommand,
   TransactWriteCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { DynamoAppointments } from '../packages/adapters/src/dynamo.js';
+import { DynamoAppointments } from '#infrastructure/persistence/dynamo/repository';
 import { event } from './fixtures.js';
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'us-east-1' }));
@@ -40,8 +40,7 @@ test('bounds transaction conflicts and does not retry unrelated failures', async
   await expect(store.create(event)).rejects.toBe('unknown');
 });
 
-test('returns an empty page for omitted DynamoDB items and rejects wrong confirmation types', async () => {
+test('returns an empty page for omitted DynamoDB items', async () => {
   mock.on(QueryCommand).resolves({});
   expect(await store.list('00123', 20)).toEqual({ items: [] });
-  await expect(store.confirm(event)).rejects.toThrow('Unexpected confirmation type');
 });

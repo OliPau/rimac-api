@@ -3,7 +3,7 @@ import { project, stacks } from '../infra/config.js';
 import { readFile } from 'node:fs/promises';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { RDSDataClient } from '@aws-sdk/client-rds-data';
-import { DataApi } from '../packages/adapters/src/data-api.js';
+import { DataApi } from '#infrastructure/persistence/mysql/data-api';
 
 const config = { region: project.region };
 const secrets = new SecretsManagerClient(config);

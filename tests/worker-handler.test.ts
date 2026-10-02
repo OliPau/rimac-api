@@ -62,7 +62,7 @@ test.each(['PE', 'CL'] as const)(
     bridge
       .on(PutEventsCommand)
       .resolves({ FailedEntryCount: 0, Entries: [{ EventId: 'receipt' }] });
-    const { handler } = await import('../apps/api/src/worker.js');
+    const { handler } = await import('../src/handlers/worker.js');
     expect(await handler(sqs({ ...event, countryISO }), context)).toEqual({
       batchItemFailures: [],
     });
@@ -83,5 +83,5 @@ test.each(['PE', 'CL'] as const)(
 
 test('rejects unsupported worker countries before consuming messages', async () => {
   vi.stubEnv('COUNTRY', 'AR');
-  await expect(import('../apps/api/src/worker.js')).rejects.toThrow('Invalid worker country');
+  await expect(import('../src/handlers/worker.js')).rejects.toThrow('Invalid worker country');
 });

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { CloudWatchClient, GetMetricStatisticsCommand } from '@aws-sdk/client-cloudwatch';
-import { acceptance, appointment } from '../packages/contracts/src/index.js';
+import { acceptance, appointment } from '#infrastructure/shared/appointment.schema';
 import { z } from 'zod';
 
 const config = { region: project.region };

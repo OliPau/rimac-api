@@ -2,7 +2,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-import { DynamoOutbox } from '../packages/adapters/src/outbox.js';
+import { DynamoOutbox } from '#infrastructure/persistence/dynamo/outbox';
 import { event } from './fixtures.js';
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'us-east-1' }));

@@ -1,8 +1,8 @@
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
 import { expect, test } from 'vitest';
 import { mockClient } from 'aws-sdk-client-mock';
-import { CompletionPublisher } from '../packages/adapters/src/publish.js';
-import type { Event } from '../packages/core/src/index.js';
+import { CompletionPublisher } from '#infrastructure/messaging/publish';
+import type { Event } from '#domain/appointments/index';
 
 const event: Event = {
   version: 1,

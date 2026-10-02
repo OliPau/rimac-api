@@ -12,9 +12,9 @@ import {
 } from '@aws-sdk/client-sqs';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
-import { DynamoAppointments } from '../packages/adapters/src/dynamo.js';
-import { DynamoOutbox } from '../packages/adapters/src/outbox.js';
-import { appointment as schema } from '../packages/contracts/src/index.js';
+import { DynamoAppointments } from '#infrastructure/persistence/dynamo/repository';
+import { DynamoOutbox } from '#infrastructure/persistence/dynamo/outbox';
+import { appointment as schema } from '#infrastructure/shared/appointment.schema';
 
 const config = { region: project.region };
 const sqs = new SQSClient(config);

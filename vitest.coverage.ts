@@ -7,7 +7,7 @@ export default defineConfig({
     hookTimeout: 60000,
     coverage: {
       provider: 'v8',
-      include: ['apps/api/src/**/*.ts', 'packages/*/src/**/*.ts'],
+      include: ['src/**/*.ts'],
       reporter: [['text', { skipFull: false }], 'json', 'json-summary', 'html'],
       thresholds: { perFile: true, lines: 100, branches: 100 },
     },

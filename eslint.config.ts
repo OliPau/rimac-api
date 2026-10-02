@@ -20,11 +20,65 @@ export default tseslint.config(
     files: ['**/*.ts'],
   },
   {
-    files: ['packages/core/**/*.ts'],
+    files: ['src/domain/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
-        { patterns: ['@aws-sdk/*', 'zod', '**/adapters/**', '**/contracts/**'] },
+        {
+          patterns: [
+            '@aws-sdk/*',
+            '@aws-lambda-powertools/*',
+            'aws-lambda',
+            'zod',
+            '#application',
+            '#application/*',
+            '#infrastructure/*',
+            '**/application/**',
+            '**/infrastructure/**',
+            '**/composition/**',
+            '**/handlers/**',
+            '**/infra/**',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/application/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            '@aws-sdk/*',
+            '@aws-lambda-powertools/*',
+            'aws-lambda',
+            'zod',
+            '#infrastructure/*',
+            '**/infrastructure/**',
+            '**/composition/**',
+            '**/handlers/**',
+            '**/infra/**',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/infrastructure/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: ['**/composition/**', '**/handlers/**', '**/infra/**'] },
+      ],
+    },
+  },
+  {
+    files: ['src/handlers/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: ['@aws-sdk/*', '#domain/*', '#application/*', '#infrastructure/*', 'zod'] },
       ],
     },
   },
