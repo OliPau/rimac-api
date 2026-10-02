@@ -44,7 +44,7 @@ jobs:
         if: always() && github.ref == 'refs/heads/main' && (steps.scan.outcome == 'success' || steps.scan.outcome == 'failure')
         run: >-
           snyk monitor --all-projects --detection-depth=1 --dev --org=olipau
-          --project-name=rimac-api --target-reference=main
+          --target-reference=main
           --remote-repo-url=https://github.com/OliPau/rimac-api
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
