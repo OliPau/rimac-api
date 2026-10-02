@@ -15,9 +15,33 @@ import { infrastructureParameters, project, stacks } from '../infra/config.js';
 const operation = process.argv[2];
 const target = process.argv[3];
 assert.ok(operation === 'plan' || operation === 'execute');
-assert.ok(target === 'data' || target === 'cost' || target === 'github');
+const targets = [
+  {
+    name: 'data',
+    stack: stacks.data,
+    template: 'infra/data.yml',
+    before: 'delivery/data-before.json',
+    changes: 'delivery/data-changes.json',
+  },
+  {
+    name: 'cost',
+    stack: stacks.cost,
+    template: 'infra/cost.yml',
+    before: 'delivery/cost-before.json',
+    changes: 'delivery/cost-changes.json',
+  },
+  {
+    name: 'github',
+    stack: stacks.github,
+    template: 'infra/github.yml',
+    before: 'delivery/github-before.json',
+    changes: 'delivery/github-changes.json',
+  },
+];
+const selected = targets.find(({ name }) => name === target);
+assert.ok(selected, 'Unsupported infrastructure stack');
 const client = new CloudFormationClient({ region: project.region });
-const StackName = stacks[target];
+const StackName = selected.stack;
 const ChangeSetName = 'security-remediation';
 await mkdir('delivery', { recursive: true });
 if (operation === 'plan') {
@@ -25,16 +49,13 @@ if (operation === 'plan') {
   assert.ok(stack);
   const template = await client.send(new GetTemplateCommand({ StackName }));
   const resources = await client.send(new ListStackResourcesCommand({ StackName }));
-  await writeFile(
-    `delivery/${target}-before.json`,
-    JSON.stringify({ stack, template, resources }, null, 2),
-  );
+  await writeFile(selected.before, JSON.stringify({ stack, template, resources }, null, 2));
   await client.send(
     new CreateChangeSetCommand({
       StackName,
       ChangeSetName,
       ChangeSetType: 'UPDATE',
-      TemplateBody: await readFile(`infra/${target}.yml`, 'utf8'),
+      TemplateBody: await readFile(selected.template, 'utf8'),
       Capabilities: ['CAPABILITY_NAMED_IAM'],
       Parameters: [
         ...(stack.Parameters ?? [])
@@ -69,7 +90,7 @@ for (const change of changes.Changes ?? []) {
     `Unsafe resource change: ${JSON.stringify(resource)}`,
   );
 }
-await writeFile(`delivery/${target}-changes.json`, JSON.stringify(changes, null, 2));
+await writeFile(selected.changes, JSON.stringify(changes, null, 2));
 console.log(
   JSON.stringify(
     changes.Changes?.map(({ ResourceChange }) => ({

@@ -1,6 +1,6 @@
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Script } from 'node:vm';
+import { transformSync } from 'esbuild';
 import { unzipSync, zipSync } from 'fflate';
 
 export const entries = {
@@ -25,10 +25,12 @@ export async function packageLocal(
 }
 
 export async function inspectPackages(directory: string): Promise<void> {
-  const archives = (await readdir(directory)).filter((name) => name.endsWith('.zip')).sort();
+  const archives = (await readdir(directory))
+    .filter((name) => name.endsWith('.zip'))
+    .sort((left, right) => left.localeCompare(right));
   const expected = Object.keys(entries)
     .map((name) => `${name}.zip`)
-    .sort();
+    .sort((left, right) => left.localeCompare(right));
   if (JSON.stringify(archives) !== JSON.stringify(expected)) {
     throw new Error('Expected exactly the four Lambda archives');
   }
@@ -57,7 +59,10 @@ export async function inspectPackages(directory: string): Promise<void> {
     if (count !== 1 || !content?.byteLength) {
       throw new Error(`Missing executable code: ${name}`);
     }
-    new Script(new TextDecoder('utf-8', { fatal: true }).decode(content), { filename: path });
+    transformSync(new TextDecoder('utf-8', { fatal: true }).decode(content), {
+      loader: 'js',
+      sourcefile: path,
+    });
     console.log(`${name}.zip: 1 file, ${content.byteLength} bytes, clean`);
   }
 }
