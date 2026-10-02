@@ -56,13 +56,11 @@ export function httpHandler(
             },
           });
         }
-        return response(
-          202,
-          await create.execute({
-            ...input.data,
-            ...(key.data === undefined ? {} : { idempotencyKey: key.data }),
-          }),
-        );
+        const result = await create.execute({
+          ...input.data,
+          ...(key.data === undefined ? {} : { idempotencyKey: key.data }),
+        });
+        return response(result.status === 'completed' ? 200 : 202, result);
       }
       if (event.routeKey === 'GET /appointments/{insuredId}') {
         const id = insured.safeParse(event.pathParameters?.insuredId);

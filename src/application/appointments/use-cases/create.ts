@@ -19,6 +19,9 @@ export class CreateAppointment {
       countryISO: input.countryISO,
     };
     const accepted = await this.appointments.create(request, input.idempotencyKey);
+    if (accepted.status === 'completed') {
+      return accepted;
+    }
     try {
       const result = await this.dispatcher.dispatch(accepted.appointmentId);
       if (result.status === 'failed') {

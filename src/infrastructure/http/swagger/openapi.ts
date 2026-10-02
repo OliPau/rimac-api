@@ -19,7 +19,7 @@ export function openapi(server = '/') {
           operationId: 'createAppointment',
           summary: 'Registrar una cita de forma asíncrona',
           description:
-            '202 confirma persistencia durable, no procesamiento completado. Los duplicados de negocio comparten appointmentId. Idempotency-Key dura 24 horas; repetir la misma entrada conserva la aceptación original pending. Cambiar la entrada con la misma clave devuelve 409. Consultar GET para conocer el estado actual. Los tres campos son obligatorios y no se normalizan ni convierten automáticamente. scheduleId referencia un espacio de atención previamente seleccionado; esta demo no consulta catálogos de horarios ni asegurados. Los errores 400 incluyen error.details con el campo y la regla incumplida.',
+            '202 indica una cita nueva o todavía pending. Repetir una cita ya completed devuelve 200 y el mensaje de confirmación. Los duplicados de negocio conservan appointmentId y createdAt; no crean otra cita. Idempotency-Key dura 24 horas y también consulta el estado actual en DynamoDB, sin reproducir una respuesta antigua. Cambiar la entrada con la misma clave devuelve 409. El estado refleja el momento de la lectura; la confirmación es asíncrona y puede llegar después. Los tres campos son obligatorios y no se normalizan ni convierten automáticamente. scheduleId referencia un espacio de atención previamente seleccionado; esta demo no consulta catálogos de horarios ni asegurados. Los errores 400 incluyen error.details con el campo y la regla incumplida.',
           parameters: [
             {
               in: 'header',
@@ -47,9 +47,22 @@ export function openapi(server = '/') {
             },
           },
           responses: {
+            '200': {
+              description:
+                'La cita ya fue confirmada; se conserva su identificador y fecha originales',
+              content: {
+                'application/json': {
+                  schema: z.toJSONSchema(acceptance.extend({ status: z.literal('completed') })),
+                },
+              },
+            },
             '202': {
-              description: 'Durably accepted',
-              content: { 'application/json': { schema: z.toJSONSchema(acceptance) } },
+              description: 'Cita nueva o existente pendiente de confirmación',
+              content: {
+                'application/json': {
+                  schema: z.toJSONSchema(acceptance.extend({ status: z.literal('pending') })),
+                },
+              },
             },
             '400': { $ref: '#/components/responses/InvalidPost' },
             '409': errorResponse('Clave usada con otra entrada', ['IDEMPOTENCY_CONFLICT']),

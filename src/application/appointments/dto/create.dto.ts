@@ -6,7 +6,7 @@ export interface CreateAppointmentDto extends Request {
 
 export interface Acceptance {
   appointmentId: string;
-  status: 'pending';
+  status: 'pending' | 'completed';
   message: string;
   createdAt: string;
 }

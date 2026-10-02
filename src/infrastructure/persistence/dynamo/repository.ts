@@ -42,10 +42,6 @@ export class DynamoAppointments implements Appointments {
       const saved = keyHash
         ? await readAcceptance(this.client, this.tables.keys, keyHash, fingerprint, seconds)
         : undefined;
-      if (saved) {
-        return saved;
-      }
-
       const existing = await this.client.send(
         new GetCommand({
           TableName: this.tables.appointments,
@@ -53,10 +49,18 @@ export class DynamoAppointments implements Appointments {
           ConsistentRead: true,
         }),
       );
-      const createdAt = existing.Item
-        ? appointment.parse(existing.Item).createdAt
-        : new Date(this.now()).toISOString();
-      const accepted = accept(appointmentId, createdAt);
+      if (saved && !existing.Item) {
+        throw new Error('Idempotency record references a missing appointment');
+      }
+      const current = existing.Item ? appointment.parse(existing.Item) : undefined;
+      const accepted = accept(
+        appointmentId,
+        current?.createdAt ?? new Date(this.now()).toISOString(),
+        current?.status ?? 'pending',
+      );
+      if (saved) {
+        return accepted;
+      }
       const writes = existing.Item
         ? []
         : appointmentWrites(
@@ -65,7 +69,15 @@ export class DynamoAppointments implements Appointments {
             seconds,
           );
       if (keyHash) {
-        writes.push(keyWrite(this.tables.keys, keyHash, fingerprint, accepted, seconds));
+        writes.push(
+          keyWrite(
+            this.tables.keys,
+            keyHash,
+            fingerprint,
+            accept(appointmentId, accepted.createdAt),
+            seconds,
+          ),
+        );
       }
       if (writes.length === 0) {
         return accepted;

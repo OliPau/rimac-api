@@ -1,12 +1,19 @@
 import type { Event, Request } from '#domain/appointments/index';
 import type { Acceptance } from '#application/appointments/dto/index';
 
-export function accept(appointmentId: string, createdAt: string): Acceptance {
+export function accept(
+  appointmentId: string,
+  createdAt: string,
+  status: Acceptance['status'] = 'pending',
+): Acceptance {
   return {
     appointmentId,
-    status: 'pending',
+    status,
     createdAt,
-    message: 'El agendamiento está en proceso.',
+    message:
+      status === 'completed'
+        ? 'El agendamiento ya fue confirmado.'
+        : 'El agendamiento está en proceso.',
   };
 }
 

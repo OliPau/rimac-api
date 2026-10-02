@@ -7,6 +7,8 @@ import assert from 'node:assert/strict';
 import { acceptance, appointment } from '#infrastructure/shared/appointment.schema';
 import { z } from 'zod';
 import { backoffDelay } from '#infrastructure/shared/backoff';
+import { accept } from '#application/appointments/helpers/registration';
+import type { Acceptance } from '#application/appointments/index';
 
 const retryBaseMs = 1000;
 const retryJitterMs = 1000;
@@ -32,26 +34,32 @@ async function call(path: string, body?: unknown, key?: string): Promise<Respons
 }
 
 const ids: string[] = [];
+const registrations: { countryISO: string; key: string; accepted: Acceptance }[] = [];
+
+async function verifyRetry(response: Response, original: Acceptance) {
+  const current = acceptance.parse(await response.json());
+  assert.equal(response.status, current.status === 'completed' ? 200 : 202);
+  assert.deepEqual(current, accept(original.appointmentId, original.createdAt, current.status));
+  return current;
+}
+
 for (const countryISO of ['PE', 'CL']) {
   const body = { insuredId, scheduleId, countryISO };
   const key = randomUUID();
   const response = await call('/appointments', body, key);
   assert.equal(response.status, 202);
   const accepted = acceptance.parse(await response.json());
+  assert.equal(accepted.status, 'pending');
   ids.push(accepted.appointmentId);
-  const repeated = await Promise.all(
+  registrations.push({ countryISO, key, accepted });
+  await Promise.all(
     Array.from({ length: 8 }, async (_, index) => {
       const result = await call('/appointments', body, index % 2 ? key : randomUUID());
-      assert.equal(result.status, 202);
-      return acceptance.parse(await result.json());
+      return verifyRetry(result, accepted);
     }),
   );
-  for (const result of repeated) {
-    assert.deepEqual(result, accepted);
-  }
   const withoutKey = await call('/appointments', body);
-  assert.equal(withoutKey.status, 202);
-  assert.deepEqual(acceptance.parse(await withoutKey.json()), accepted);
+  await verifyRetry(withoutKey, accepted);
   assert.equal(
     (await call('/appointments', { ...body, scheduleId: scheduleId + 1 }, key)).status,
     409,
@@ -75,6 +83,20 @@ for (let attempt = 0; attempt < 120; attempt++) {
   await delay(5000);
 }
 assert.ok(completed, 'Both countries must reach completed');
+for (const { countryISO, key, accepted } of registrations) {
+  const body = { insuredId, scheduleId, countryISO };
+  for (const retryKey of [key, randomUUID(), undefined]) {
+    const result = await verifyRetry(await call('/appointments', body, retryKey), accepted);
+    assert.equal(result.status, 'completed');
+  }
+  assert.equal(
+    (await call('/appointments', { ...body, scheduleId: scheduleId + 1 }, key)).status,
+    409,
+  );
+  console.log(`${countryISO}: completed retries return 200 with original, new and absent keys`);
+}
+const finalPage = page.parse(await (await call(`/appointments/${insuredId}`)).json());
+assert.equal(finalPage.items.filter((item) => ids.includes(item.appointmentId)).length, 2);
 const first = page.parse(await (await call(`/appointments/${insuredId}?limit=1`)).json());
 assert.equal(first.items.length, 1);
 assert.ok(first.cursor);
@@ -104,6 +126,7 @@ await writeFile(
         'CL completed',
         'leading zeroes',
         'concurrent deduplication',
+        'completed retries return 200 with original, new and absent keys',
         '409 conflict',
         'pagination',
         'cursor binding',

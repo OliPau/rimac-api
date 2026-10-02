@@ -2,7 +2,7 @@
 
 Demo de registro asíncrono de citas para Perú y Chile con TypeScript, AWS Lambda y arquitectura hexagonal. Utilizar únicamente datos ficticios.
 
-`POST /appointments` confirma la persistencia con `202`; el procesamiento por país termina después. `GET /appointments/{insuredId}` permite consultar el estado `pending` o `completed`.
+`POST /appointments` confirma la persistencia con `202 pending`; el procesamiento por país termina después. Repetir una cita confirmada devuelve `200 completed` y «El agendamiento ya fue confirmado.», conservando su identificador y fecha. Esto también aplica con `Idempotency-Key`: los reintentos consultan el estado actual en DynamoDB y no crean otra cita. `GET /appointments/{insuredId}` permite consultar el estado `pending` o `completed`.
 
 ## Preparación
 

@@ -35,7 +35,7 @@ export const appointment = request.extend({
 
 export const acceptance = z.strictObject({
   appointmentId: z.uuid(),
-  status: z.literal('pending'),
+  status: z.enum(['pending', 'completed']),
   message: z.string(),
   createdAt: z.iso.datetime(),
 });

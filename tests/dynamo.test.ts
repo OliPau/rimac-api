@@ -9,6 +9,8 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { DynamoAppointments } from '#infrastructure/persistence/dynamo/repository';
 import { event } from './fixtures.js';
+import { identity } from '#domain/appointments/index';
+import { accept } from '#application/appointments/helpers/registration';
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({ region: 'us-east-1' }));
 const mock = mockClient(client);
@@ -20,6 +22,20 @@ const store = new DynamoAppointments(client, {
 afterEach(() => {
   mock.reset();
   vi.useRealTimers();
+});
+
+test('fails without writes when an active idempotency record has no appointment', async () => {
+  const { fingerprint, appointmentId } = identity(event);
+  mock.on(GetCommand, { TableName: 'keys' }).resolves({
+    Item: {
+      fingerprint,
+      expiresAt: Math.floor(Date.now() / 1000) + 3600,
+      acceptance: accept(appointmentId, event.occurredAt),
+    },
+  });
+  mock.on(GetCommand, { TableName: 'appointments' }).resolves({});
+  await expect(store.create(event, 'existing-key')).rejects.toThrow('missing appointment');
+  expect(mock.commandCalls(TransactWriteCommand)).toHaveLength(0);
 });
 
 test('bounds transaction conflicts and does not retry unrelated failures', async () => {

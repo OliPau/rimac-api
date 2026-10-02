@@ -12,6 +12,8 @@ import {
   type Appointments,
 } from '#application/appointments/index';
 import { event, sqs } from './fixtures.js';
+import { accept } from '#application/appointments/helpers/registration';
+import { openapi } from '#infrastructure/http/swagger/openapi';
 
 const appointments: Appointments = {
   create: vi.fn(async () => ({
@@ -78,6 +80,24 @@ test('returns acceptance and consistent validation errors', async () => {
   expect(await handler(input('GET /appointments/{insuredId}'))).toMatchObject({ statusCode: 400 });
   expect(await handler(input('unknown'))).toMatchObject({ statusCode: 404 });
 });
+
+test.each(['pending', 'completed'] as const)(
+  'returns the HTTP status and documented schema for %s',
+  async (status) => {
+    const result = accept(event.appointmentId, event.occurredAt, status);
+    vi.mocked(appointments.create).mockResolvedValueOnce(result);
+    const post = input(
+      'POST /appointments',
+      JSON.stringify({ insuredId: '00123', scheduleId: 1, countryISO: 'PE' }),
+    );
+    const response = await handler(post);
+    const code = status === 'completed' ? 200 : 202;
+    expect(response).toMatchObject({ statusCode: code, body: JSON.stringify(result) });
+    const schema =
+      openapi().paths['/appointments'].post.responses[code].content['application/json'].schema;
+    expect(schema.properties?.status).toMatchObject({ const: status });
+  },
+);
 
 test('maps conflicts, invalid cursors and storage failures without exposing details', async () => {
   const post = input(

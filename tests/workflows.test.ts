@@ -4,6 +4,7 @@ import { DispatchPendingAppointments } from '#application/appointments/use-cases
 import { ProcessAppointment } from '#application/appointments/use-cases/process';
 import type { Event } from '#domain/appointments/index';
 import type { Appointments, Outbox } from '#application/appointments/index';
+import { accept } from '#application/appointments/helpers/registration';
 
 const event: Event = {
   version: 1,
@@ -27,6 +28,23 @@ function setup() {
   const publisher = { publish: vi.fn(async () => undefined) };
   return { outbox, publisher, dispatcher: new DispatchPendingAppointments(outbox, publisher) };
 }
+
+test('returns a completed appointment without trying to publish it again', async () => {
+  const { dispatcher, outbox, publisher } = setup();
+  const completed = accept(event.appointmentId, event.occurredAt, 'completed');
+  const appointments: Appointments = {
+    create: vi.fn(async () => completed),
+    list: vi.fn(),
+    confirm: vi.fn(),
+  };
+  const report = vi.fn();
+  expect(await new CreateAppointment(appointments, dispatcher, report).execute(event)).toEqual(
+    completed,
+  );
+  expect(outbox.claim).not.toHaveBeenCalled();
+  expect(publisher.publish).not.toHaveBeenCalled();
+  expect(report).not.toHaveBeenCalled();
+});
 
 test('marks publication only after successful delivery', async () => {
   const { dispatcher, outbox, publisher } = setup();

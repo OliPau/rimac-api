@@ -4,6 +4,7 @@ import { DynamoDBClient, CreateTableCommand, DeleteTableCommand } from '@aws-sdk
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { DynamoAppointments } from '#infrastructure/persistence/dynamo/repository';
 import { DynamoOutbox } from '#infrastructure/persistence/dynamo/outbox';
+import { hashKey } from '#infrastructure/persistence/dynamo/helpers/keys';
 
 const client = new DynamoDBClient({
   region: 'us-east-1',
@@ -173,10 +174,80 @@ test('confirmation is idempotent and never creates orphan records', async () => 
     (item) => item.appointmentId === accepted.appointmentId,
   );
   expect(current?.status).toBe('completed');
-  expect((await store.create({ ...input, scheduleId: 126 })).status).toBe('pending');
+  expect((await store.create({ ...input, scheduleId: 126 })).status).toBe('completed');
   await expect(store.confirm({ ...confirmation, countryISO: 'CL' })).rejects.toThrow();
   await expect(store.confirm({ ...confirmation, insuredId: '99999' })).rejects.toThrow();
 });
+
+test.each(['PE', 'CL'] as const)(
+  'returns current %s state on retries with original, new, expired or absent keys',
+  async (countryISO) => {
+    const request = { ...input, insuredId: '00777', scheduleId: 177, countryISO };
+    const key = `current-state-${countryISO}`;
+    const accepted = await store.create(request, key);
+    expect(accepted.status).toBe('pending');
+    for (const retryKey of [key, `${key}-pending`, undefined]) {
+      expect(await store.create(request, retryKey)).toEqual(accepted);
+    }
+    const document = DynamoDBDocumentClient.from(client);
+    const readOutbox = () =>
+      document.send(
+        new GetCommand({
+          TableName: tables.outbox,
+          Key: { id: accepted.appointmentId },
+          ConsistentRead: true,
+        }),
+      );
+    const before = await readOutbox();
+    await store.confirm({
+      ...request,
+      version: 1,
+      type: 'appointment.completed',
+      eventId: accepted.appointmentId,
+      appointmentId: accepted.appointmentId,
+      correlationId: accepted.appointmentId,
+      occurredAt: accepted.createdAt,
+    });
+    const expected = {
+      ...accepted,
+      status: 'completed',
+      message: 'El agendamiento ya fue confirmado.',
+    };
+    const results = await Promise.all(
+      [key, `${key}-pending`, `${key}-completed`, undefined].map((retryKey) =>
+        store.create(request, retryKey),
+      ),
+    );
+    expect(results).toEqual([expected, expected, expected, expected]);
+    expect(await store.create(request, `${key}-completed`)).toEqual(expected);
+    const storedKey = await document.send(
+      new GetCommand({
+        TableName: tables.keys,
+        Key: { id: hashKey(`${key}-completed`) },
+        ConsistentRead: true,
+      }),
+    );
+    expect(storedKey.Item?.acceptance).toEqual(accepted);
+    const future = new DynamoAppointments(document, tables, () => Date.now() + 86401000);
+    expect(await future.create(request, key)).toEqual(expected);
+    await expect(store.create({ ...request, scheduleId: 178 }, `${key}-completed`)).rejects.toThrow(
+      'already used',
+    );
+    expect(
+      (await store.list(request.insuredId, 20)).items.filter(
+        (item) => item.countryISO === countryISO,
+      ),
+    ).toEqual([
+      {
+        ...request,
+        appointmentId: accepted.appointmentId,
+        createdAt: accepted.createdAt,
+        status: 'completed',
+      },
+    ]);
+    expect((await readOutbox()).Item).toEqual(before.Item);
+  },
+);
 
 test('keeps original pending age through leases, backoff and legacy migration', async () => {
   const documents = DynamoDBDocumentClient.from(client);

@@ -22,10 +22,36 @@ sequenceDiagram
         API->>DB: Reprogramar intento
         API->>API: Registrar fase y nombres de errores
     end
-    API-->>Client: 202 con aceptación original pending
+    API-->>Client: 202 con estado pending
 ```
 
 Un fallo anterior al commit no confirma aceptación. Una vez persistida la transacción, un fallo de publicación no cambia el `202`. Si SNS aceptó el evento y falla marcar el envío, se conserva el bloqueo hasta que venza: una repetición posterior es segura por idempotencia.
+
+## Reintentos del POST
+
+```mermaid
+sequenceDiagram
+    participant Client as Cliente
+    participant API as HTTP y caso de uso
+    participant DB as DynamoDB
+    Client->>API: Repetir POST /appointments
+    opt Idempotency-Key presente
+        API->>DB: Validar clave vigente y huella de la solicitud
+        DB-->>API: Clave válida o conflicto 409
+    end
+    API->>DB: Leer cita con consistencia fuerte
+    DB-->>API: Identificador, fecha y estado actuales
+    alt Cita completed
+        API-->>Client: 200 completed, ya fue confirmado
+    else Cita pending
+        API->>DB: Intentar recuperar publicación pendiente mediante outbox
+        API-->>Client: 202 pending, está en proceso
+    end
+```
+
+La misma combinación de asegurado, horario y país conserva `appointmentId` y `createdAt`, con la clave original, una nueva o sin clave. La idempotencia evita efectos duplicados; no reproduce una respuesta histórica. Las claves existentes con aceptación `pending` siguen siendo válidas: el estado de respuesta se lee de la cita. La clave mantiene su vencimiento y devuelve `409` si se reutiliza con otra entrada. Si existe una clave vigente pero falta su cita, se devuelve `503` sin recrearla.
+
+El estado corresponde al momento de la lectura de DynamoDB. La confirmación asíncrona puede llegar después de esa lectura; por eso una respuesta `202` todavía puede preceder inmediatamente a un GET `completed`. No se consulta RDS desde el POST. Las citas confirmadas no intentan publicar nuevamente el evento.
 
 ## Procesamiento por país y confirmación
 
