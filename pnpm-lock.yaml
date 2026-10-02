@@ -23,6 +23,9 @@ importers:
       '@aws-sdk/client-rds-data':
         specifier: ^3.1144.0
         version: 3.1144.0
+      '@aws-sdk/client-secrets-manager':
+        specifier: ^3.1144.0
+        version: 3.1144.0
       '@aws-sdk/client-sns':
         specifier: ^3.1144.0
         version: 3.1144.0
@@ -46,9 +49,6 @@ importers:
         specifier: ^3.1144.0
         version: 3.1144.0
       '@aws-sdk/client-lambda':
-        specifier: ^3.1144.0
-        version: 3.1144.0
-      '@aws-sdk/client-secrets-manager':
         specifier: ^3.1144.0
         version: 3.1144.0
       '@aws-sdk/client-sqs':
@@ -93,6 +93,9 @@ importers:
       serverless:
         specifier: ^4.43.0
         version: 4.43.0
+      swagger-ui-dist:
+        specifier: 5.33.1
+        version: 5.33.1
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
@@ -630,6 +633,9 @@ packages:
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
+
+  '@scarf/scarf@1.4.0':
+    resolution: {integrity: sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ==}
 
   '@serverless/typescript@4.30.0':
     resolution: {integrity: sha512-4uunJ/hqbQ0ypOCqmjhxlZlSdD5Xe2+yAmpFsbyHYkQWjOu0ot2vLoRSM8YIa5VA72MDrhM7y04Z3o48JMS+9g==}
@@ -1287,6 +1293,9 @@ packages:
   supports-color@7.2.0:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
     engines: {node: '>=8'}
+
+  swagger-ui-dist@5.33.1:
+    resolution: {integrity: sha512-H872wWkA53bFIsGgi7OWgmq+CRWw3nFQGdJWRqOB9wNwTm6e5ol34+qPDkV4AJlK+gglM2EsJiOOzsGsEGbluA==}
 
   tinybench@6.2.0:
     resolution: {integrity: sha512-78U2TlB2CnVenajOFzf3BKSm0J6oz5L0NV7g32LCPccvYc0lbWvys4d3uUUCS2B1N8PAf2+aekR8i1KbC3HO7Q==}
@@ -2024,6 +2033,8 @@ snapshots:
 
   '@rolldown/pluginutils@1.0.1': {}
 
+  '@scarf/scarf@1.4.0': {}
+
   '@serverless/typescript@4.30.0': {}
 
   '@sinonjs/commons@3.0.1':
@@ -2715,6 +2726,10 @@ snapshots:
   supports-color@7.2.0:
     dependencies:
       has-flag: 4.0.0
+
+  swagger-ui-dist@5.33.1:
+    dependencies:
+      '@scarf/scarf': 1.4.0
 
   tinybench@6.2.0: {}
 
