@@ -33,7 +33,7 @@ jobs:
       - run: pnpm openapi
       - run: pnpm bundle
       - run: pnpm infra:validate
-      - run: python scripts/package-local.py
-      - run: python scripts/inspect-package.py .local/artifacts
+      - run: pnpm exec tsx scripts/package-local.ts
+      - run: pnpm exec tsx scripts/inspect-package.ts .local/artifacts
       - if: always()
         run: docker compose down

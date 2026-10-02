@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { deployedResources } from './cloud.js';
 import { localDeployment } from '../infra/config.js';
 import { service } from '../infra/service.js';
+import { packageLocal, inspectPackages } from './packages.js';
 
 const command = process.argv[2] ?? 'package';
 if (!['package', 'deploy', 'remove', 'print'].includes(command)) {
@@ -17,15 +18,8 @@ await writeFile('serverless.generated.json', JSON.stringify(config, null, 2));
 const require = createRequire(import.meta.url);
 if (command === 'package' || command === 'deploy') {
   await import('./bundle.js');
-  for (const args of [
-    ['scripts/package-local.py'],
-    ['scripts/inspect-package.py', '.local/artifacts'],
-  ]) {
-    const result = spawnSync('python', args, { stdio: 'inherit' });
-    if (result.status !== 0) {
-      process.exit(result.status ?? 1);
-    }
-  }
+  await packageLocal();
+  await inspectPackages('.local/artifacts');
 }
 function run(args: string[]): void {
   const result = spawnSync(process.execPath, [require.resolve('serverless/run.js'), ...args], {
