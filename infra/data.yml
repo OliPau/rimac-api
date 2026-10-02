@@ -1,5 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Rimac demo private Aurora storage
+Parameters:
+  ProjectName:
+    Type: String
+    Default: rimac
+  Stage:
+    Type: String
+    Default: demo
 Resources:
   Vpc:
     Type: AWS::EC2::VPC
@@ -9,7 +16,7 @@ Resources:
       EnableDnsHostnames: true
       Tags:
         - Key: Project
-          Value: rimac
+          Value: !Ref ProjectName
   SubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -42,7 +49,7 @@ Resources:
     DeletionPolicy: Snapshot
     UpdateReplacePolicy: Snapshot
     Properties:
-      DBClusterIdentifier: rimac-demo
+      DBClusterIdentifier: !Sub ${ProjectName}-${Stage}
       Engine: aurora-mysql
       EngineVersion: 8.0.mysql_aurora.3.13.0
       MasterUsername: rimac_admin
@@ -50,7 +57,7 @@ Resources:
       DatabaseName: appointments_pe
       EnableHttpEndpoint: true
       StorageEncrypted: true
-      BackupRetentionPeriod: 1
+      BackupRetentionPeriod: 7
       DBSubnetGroupName: !Ref SubnetGroup
       VpcSecurityGroupIds: [!Ref SecurityGroup]
       ServerlessV2ScalingConfiguration:
@@ -59,11 +66,11 @@ Resources:
         SecondsUntilAutoPause: 300
       Tags:
         - Key: Project
-          Value: rimac
+          Value: !Ref ProjectName
   Instance:
     Type: AWS::RDS::DBInstance
     Properties:
-      DBInstanceIdentifier: rimac-demo-writer
+      DBInstanceIdentifier: !Sub ${ProjectName}-${Stage}-writer
       DBClusterIdentifier: !Ref Cluster
       Engine: aurora-mysql
       DBInstanceClass: db.serverless
@@ -72,11 +79,11 @@ Resources:
       EnablePerformanceInsights: false
       Tags:
         - Key: Project
-          Value: rimac
+          Value: !Ref ProjectName
   SecretPE:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: rimac/demo/pe
+      Name: !Sub ${ProjectName}/${Stage}/pe
       GenerateSecretString:
         SecretStringTemplate: '{"username":"rimac_pe"}'
         GenerateStringKey: password
@@ -84,11 +91,11 @@ Resources:
         ExcludePunctuation: true
       Tags:
         - Key: Project
-          Value: rimac
+          Value: !Ref ProjectName
   SecretCL:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: rimac/demo/cl
+      Name: !Sub ${ProjectName}/${Stage}/cl
       GenerateSecretString:
         SecretStringTemplate: '{"username":"rimac_cl"}'
         GenerateStringKey: password
@@ -96,7 +103,7 @@ Resources:
         ExcludePunctuation: true
       Tags:
         - Key: Project
-          Value: rimac
+          Value: !Ref ProjectName
 Outputs:
   ClusterArn:
     Value: !GetAtt Cluster.DBClusterArn

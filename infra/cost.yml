@@ -1,13 +1,62 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Rimac project budget and alarm destination
+Parameters:
+  ProjectName:
+    Type: String
+    Default: rimac
+  Stage:
+    Type: String
+    Default: demo
 Resources:
+  AlertsKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: Project budget and CloudWatch alert encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AccountAdministration
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: '*'
+          - Sid: BudgetNotifications
+            Effect: Allow
+            Principal:
+              Service: budgets.amazonaws.com
+            Action: [kms:GenerateDataKey*, kms:Decrypt]
+            Resource: '*'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnEquals:
+                aws:SourceArn: !Sub arn:aws:budgets::${AWS::AccountId}:budget/${ProjectName}-${Stage}-monthly
+          - Sid: CloudWatchNotifications
+            Effect: Allow
+            Principal:
+              Service: cloudwatch.amazonaws.com
+            Action: [kms:GenerateDataKey*, kms:Decrypt]
+            Resource: '*'
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${ProjectName}-${Stage}-*
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
   Alerts:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: rimac-demo-alerts
+      TopicName: !Sub ${ProjectName}-${Stage}-alerts
+      KmsMasterKeyId: !GetAtt AlertsKey.Arn
       Tags:
         - Key: Project
-          Value: rimac
+          Value: !Ref ProjectName
   AlertsPolicy:
     Type: AWS::SNS::TopicPolicy
     Properties:
@@ -23,19 +72,23 @@ Resources:
             Condition:
               StringEquals:
                 aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn:
+                  - !Sub arn:aws:budgets::${AWS::AccountId}:budget/${ProjectName}-${Stage}-monthly
+                  - !Sub arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${ProjectName}-${Stage}-*
   Budget:
     Type: AWS::Budgets::Budget
     DependsOn: AlertsPolicy
     Properties:
       Budget:
-        BudgetName: rimac-demo-monthly
+        BudgetName: !Sub ${ProjectName}-${Stage}-monthly
         BudgetType: COST
         TimeUnit: MONTHLY
         BudgetLimit:
           Amount: 10
           Unit: USD
         CostFilters:
-          TagKeyValue: ['user:Project$rimac']
+          TagKeyValue: [!Sub 'user:Project$${ProjectName}']
       NotificationsWithSubscribers:
         - Notification:
             NotificationType: ACTUAL

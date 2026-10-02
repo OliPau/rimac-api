@@ -1,6 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: GitHub OIDC deployment role for OliPau/rimac-api
 Parameters:
+  ProjectName:
+    Type: String
+    Default: rimac
+  Stage:
+    Type: String
+    Default: demo
   RepositorySubject:
     Type: String
     Default: repo:OliPau@11950932/rimac-api@1400761537:environment:demo
@@ -15,8 +21,20 @@ Parameters:
 Resources:
   Artifacts:
     Type: AWS::S3::Bucket
+    DependsOn: AccessLogsPolicy
     Properties:
-      BucketName: !Sub rimac-demo-artifacts-${AWS::AccountId}
+      BucketName: !Sub ${ProjectName}-${Stage}-artifacts-${AWS::AccountId}
+      VersioningConfiguration:
+        Status: Enabled
+      LoggingConfiguration:
+        DestinationBucketName: !Ref AccessLogs
+        LogFilePrefix: artifacts/
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireNoncurrentVersions
+            Status: Enabled
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 7
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -28,11 +46,77 @@ Resources:
         RestrictPublicBuckets: true
       Tags:
         - Key: Project
-          Value: rimac
+          Value: !Ref ProjectName
+  ArtifactsPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref Artifacts
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource: [!GetAtt Artifacts.Arn, !Sub '${Artifacts.Arn}/*']
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+  AccessLogs:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub ${ProjectName}-${Stage}-access-logs-${AWS::AccountId}
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireLogs
+            Status: Enabled
+            ExpirationInDays: 7
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 7
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+  AccessLogsPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref AccessLogs
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Deny
+            Principal: '*'
+            Action: s3:*
+            Resource: [!GetAtt AccessLogs.Arn, !Sub '${AccessLogs.Arn}/*']
+            Condition:
+              Bool:
+                aws:SecureTransport: 'false'
+          - Effect: Allow
+            Principal:
+              Service: logging.s3.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub ${AccessLogs.Arn}/artifacts/*
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Sub arn:aws:s3:::${ProjectName}-${Stage}-artifacts-${AWS::AccountId}
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
   DeployRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: rimac-github-deploy
+      RoleName: !Sub ${ProjectName}-github-deploy
       MaxSessionDuration: 3600
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -53,11 +137,11 @@ Resources:
               - Effect: Allow
                 Action: cloudformation:*
                 Resource:
-                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/rimac-demo/*
+                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ProjectName}-${Stage}/*
               - Effect: Allow
                 Action: cloudformation:DescribeStacks
                 Resource:
-                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/rimac-data-demo/*
+                  - !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ProjectName}-data-${Stage}/*
               - Effect: Allow
                 Action:
                   - cloudformation:ValidateTemplate
@@ -73,8 +157,8 @@ Resources:
               - Effect: Allow
                 Action: s3:*
                 Resource:
-                  - arn:aws:s3:::rimac-demo-*
-                  - arn:aws:s3:::rimac-demo-*/*
+                  - !Sub arn:aws:s3:::${ProjectName}-${Stage}-artifacts-${AWS::AccountId}
+                  - !Sub arn:aws:s3:::${ProjectName}-${Stage}-artifacts-${AWS::AccountId}/*
               - Effect: Allow
                 Action:
                   - lambda:*
@@ -85,23 +169,39 @@ Resources:
                   - events:*
                   - cloudwatch:*
                 Resource:
-                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:rimac-demo-*
-                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/rimac-demo-*
-                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/rimac-demo-*
-                  - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:rimac-demo*
-                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:rimac-demo-*
-                  - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/rimac-demo
-                  - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/rimac-demo*
-                  - !Sub arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:rimac-demo-*
+                  - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-${Stage}-*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${ProjectName}-${Stage}-*
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${ProjectName}-${Stage}-*
+                  - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${ProjectName}-${Stage}*
+                  - !Sub arn:aws:sqs:${AWS::Region}:${AWS::AccountId}:${ProjectName}-${Stage}-*
+                  - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/${ProjectName}-${Stage}
+                  - !Sub arn:aws:events:${AWS::Region}:${AWS::AccountId}:rule/${ProjectName}-${Stage}*
+                  - !Sub arn:aws:cloudwatch:${AWS::Region}:${AWS::AccountId}:alarm:${ProjectName}-${Stage}-*
               - Effect: Allow
                 Action:
                   - lambda:CreateEventSourceMapping
+                Resource: '*'
+                Condition:
+                  ArnEquals:
+                    lambda:FunctionArn:
+                      - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-${Stage}-appointment
+                      - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-${Stage}-appointment_pe
+                      - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-${Stage}-appointment_cl
+              - Effect: Allow
+                Action:
                   - lambda:UpdateEventSourceMapping
                   - lambda:DeleteEventSourceMapping
                   - lambda:GetEventSourceMapping
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:event-source-mapping:*
+                Condition:
+                  ArnEquals:
+                    lambda:FunctionArn:
+                      - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-${Stage}-appointment
+                      - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-${Stage}-appointment_pe
+                      - !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ProjectName}-${Stage}-appointment_cl
+              - Effect: Allow
+                Action:
                   - lambda:ListEventSourceMappings
-                  - cloudwatch:PutMetricAlarm
-                  - cloudwatch:DescribeAlarms
                 Resource: '*'
               - Effect: Allow
                 Action: apigateway:*
@@ -120,10 +220,10 @@ Resources:
                   - iam:ListRolePolicies
                   - iam:ListAttachedRolePolicies
                   - iam:UpdateAssumeRolePolicy
-                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/rimac-demo-*
+                Resource: !Sub arn:aws:iam::${AWS::AccountId}:role/${ProjectName}-${Stage}-*
               - Effect: Allow
                 Action: budgets:*
-                Resource: !Sub arn:aws:budgets::${AWS::AccountId}:budget/rimac-demo-monthly
+                Resource: !Sub arn:aws:budgets::${AWS::AccountId}:budget/${ProjectName}-${Stage}-monthly
               - Effect: Allow
                 Action: rds-data:*
                 Resource: !Ref ClusterArn

@@ -10,7 +10,14 @@ export const prefix = `${project.service}-${project.stage}`;
 export const stacks = {
   application: prefix,
   data: `${project.service}-data-${project.stage}`,
+  cost: `${project.service}-cost-${project.stage}`,
+  github: `${project.service}-github`,
 };
+
+export const infrastructureParameters = [
+  { ParameterKey: 'ProjectName', ParameterValue: project.service },
+  { ParameterKey: 'Stage', ParameterValue: project.stage },
+];
 
 export function resource(name: string): string {
   return `${prefix}-${name}`;
