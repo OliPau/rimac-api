@@ -89,7 +89,7 @@ export class DynamoAppointments implements Appointments {
   }
 
   async list(insuredId: string, limit: number, cursor?: string) {
-    const start = cursor ? decodeCursor(cursor, insuredId) : undefined;
+    const start = cursor === undefined ? undefined : decodeCursor(cursor, insuredId);
     const result = await this.client.send(
       new QueryCommand({
         TableName: this.tables.appointments,

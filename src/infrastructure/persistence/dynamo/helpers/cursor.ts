@@ -1,8 +1,13 @@
 import { InvalidCursor } from '#application/appointments/index';
+import { z } from 'zod';
 
 export function decodeCursor(cursor: string, insuredId: string) {
   try {
-    const decoded: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString());
+    const bytes = Buffer.from(cursor, 'base64url');
+    if (!cursor || cursor.length > 2048 || bytes.toString('base64url') !== cursor) {
+      throw new InvalidCursor();
+    }
+    const decoded: unknown = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
     if (
       typeof decoded !== 'object' ||
       decoded === null ||
@@ -10,7 +15,7 @@ export function decodeCursor(cursor: string, insuredId: string) {
       !('appointmentId' in decoded) ||
       decoded.insuredId !== insuredId ||
       typeof decoded.appointmentId !== 'string' ||
-      !/^[a-f0-9-]{36}$/.test(decoded.appointmentId)
+      !z.uuid().safeParse(decoded.appointmentId).success
     ) {
       throw new InvalidCursor();
     }

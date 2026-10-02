@@ -13,5 +13,5 @@ export const query = z.strictObject({
     .transform(Number)
     .pipe(z.number().int().min(1).max(pagination.maximumLimit))
     .default(pagination.defaultLimit),
-  cursor: z.string().min(1).max(2048).optional(),
+  cursor: z.string().optional(),
 });

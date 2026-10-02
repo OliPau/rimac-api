@@ -101,3 +101,27 @@ test('rejects missing runtime configuration', async () => {
     'Missing configuration: APPOINTMENTS_TABLE',
   );
 });
+
+test.each([
+  '',
+  '!',
+  'x'.repeat(2049),
+  Buffer.from(JSON.stringify({ insuredId: '00123', appointmentId: '-'.repeat(36) })).toString(
+    'base64url',
+  ),
+])('returns INVALID_CURSOR at the actual HTTP boundary for %s', async (cursor) => {
+  const { handler } = await import('../src/handlers/appointment.js');
+  const result = await handler(
+    {
+      ...http('GET /appointments/{insuredId}'),
+      pathParameters: { insuredId: '00123' },
+      queryStringParameters: { cursor },
+    },
+    context,
+  );
+  expect(result).toMatchObject({
+    statusCode: 400,
+    body: JSON.stringify({ error: { code: 'INVALID_CURSOR' } }),
+  });
+  expect(dynamo.commandCalls(QueryCommand)).toHaveLength(0);
+});
