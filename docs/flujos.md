@@ -88,6 +88,8 @@ Las cancelaciones transaccionales de DynamoDB se clasifican antes de reintentar:
 
 GET valida el asegurado y el tamaño de página. El cursor debe ser base64url canónico, contener JSON válido y un UUID válido, y corresponder al mismo asegurado. Un cursor inválido devuelve `400 INVALID_CURSOR`.
 
+Los errores de validación incluyen `error.details`, una lista de campos con mensajes que explican la regla incumplida. Un cuerpo con varios campos incorrectos devuelve todos sus errores sin reproducir los valores enviados. JSON mal formado usa `INVALID_JSON`; los campos, encabezados o parámetros inválidos usan `INVALID_REQUEST`. Los errores internos siguen respondiendo sin detalles técnicos sensibles.
+
 ```mermaid
 sequenceDiagram
     participant Browser as Navegador

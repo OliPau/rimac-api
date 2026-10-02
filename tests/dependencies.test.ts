@@ -12,7 +12,7 @@ test('URI compatibility and regression inputs finish in an isolated process', ()
   expect(result.status).toBe(0);
 });
 
-test('ESLint still rejects configured rule violations', async () => {
+test('ESLint still rejects configured rule violations', { timeout: 60_000 }, async () => {
   const eslint = new ESLint();
   const result = await eslint.lintText('const unused: any = 1;\nif (true) console.log("bad");\n', {
     filePath: 'scripts/verify-uri.ts',

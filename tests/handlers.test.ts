@@ -11,6 +11,7 @@ import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { Logger } from '@aws-lambda-powertools/logger';
 import { context, event, http, sqs } from './fixtures.js';
 import { identity } from '#domain/appointments/index';
+import { cursorMessage } from '#infrastructure/http/dto/appointment.dto';
 
 const dynamo = mockClient(DynamoDBDocumentClient);
 const sns = mockClient(SNSClient);
@@ -153,7 +154,9 @@ test.each([
   );
   expect(result).toMatchObject({
     statusCode: 400,
-    body: JSON.stringify({ error: { code: 'INVALID_CURSOR' } }),
+    body: JSON.stringify({
+      error: { code: 'INVALID_CURSOR', details: [{ field: 'cursor', message: cursorMessage }] },
+    }),
   });
   expect(dynamo.commandCalls(QueryCommand)).toHaveLength(0);
 });
