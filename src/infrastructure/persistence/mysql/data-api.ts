@@ -7,6 +7,10 @@ import {
 } from '@aws-sdk/client-rds-data';
 import type { Database, Parameters, Sql } from '#infrastructure/persistence/mysql/repository';
 
+const maximumRetries = 4;
+const retryBaseMs = 1000;
+const retryJitterMs = 500;
+
 interface Connection {
   resourceArn: string;
   secretArn: string;
@@ -93,11 +97,11 @@ export class DataApi implements Database {
             'ServiceUnavailableError',
             'InternalServerErrorException',
           ].includes(error.name);
-        if (!transient || attempt >= 4) {
+        if (!transient || attempt >= maximumRetries) {
           throw error;
         }
         await new Promise((resolve) =>
-          setTimeout(resolve, 1000 * 2 ** attempt + Math.random() * 500),
+          setTimeout(resolve, retryBaseMs * 2 ** attempt + Math.random() * retryJitterMs),
         );
       }
     }
