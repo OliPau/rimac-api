@@ -84,3 +84,36 @@ test('rolls back mismatched business identifiers', async () => {
   );
   await expect(store.save({ ...event, insuredId: '99999' })).rejects.toThrow('Conflicting');
 });
+
+test('rolls back the appointment when writing its confirmation fails', async () => {
+  const request = { ...event, appointmentId: randomUUID(), scheduleId: event.scheduleId + 1 };
+  const failingDatabase: Database = {
+    execute,
+    transaction: (action) =>
+      database.transaction((sql) =>
+        action({
+          execute(statement, parameters) {
+            if (statement.startsWith('INSERT IGNORE INTO outbox')) {
+              throw new Error('Simulated confirmation write failure');
+            }
+            return sql.execute(statement, parameters);
+          },
+        }),
+      ),
+  };
+  await expect(new MysqlStore(failingDatabase).save(request)).rejects.toThrow(
+    'Simulated confirmation write failure',
+  );
+  expect(
+    await execute('SELECT id FROM appointments WHERE id = :id', {
+      id: request.appointmentId,
+    }),
+  ).toEqual([]);
+  expect(
+    await execute('SELECT event_id FROM outbox WHERE appointment_id = :id', {
+      id: request.appointmentId,
+    }),
+  ).toEqual([]);
+  const saved = await store.save(request);
+  expect(await store.save(request)).toEqual(saved);
+});

@@ -128,6 +128,21 @@ test('logical TTL allows reuse without expiring business uniqueness', async () =
   );
 });
 
+test('does not leave an appointment or key when the outbox transaction fails', async () => {
+  const broken = new DynamoAppointments(DynamoDBDocumentClient.from(client), {
+    ...tables,
+    outbox: `missing-outbox-${suffix}`,
+  });
+  const request = { ...input, insuredId: '00888' };
+  await expect(broken.create(request, 'atomic-failure')).rejects.toThrow();
+  expect((await store.list(request.insuredId, 20)).items).toEqual([]);
+  const changed = { ...request, scheduleId: request.scheduleId + 1 };
+  await expect(store.create(changed, 'atomic-failure')).resolves.toMatchObject({
+    status: 'pending',
+  });
+  expect((await store.list(request.insuredId, 20)).items).toHaveLength(1);
+});
+
 test('paginates, rejects cross-insured cursors, and returns empty lists', async () => {
   await store.create({ ...input, scheduleId: 125 });
   const first = await store.list('00123', 1);
