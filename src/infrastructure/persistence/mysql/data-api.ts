@@ -6,6 +6,8 @@ import {
   RollbackTransactionCommand,
 } from '@aws-sdk/client-rds-data';
 import type { Database, Parameters, Sql } from '#infrastructure/persistence/mysql/repository';
+import { setTimeout as delay } from 'node:timers/promises';
+import { backoffDelay } from '#infrastructure/shared/backoff';
 
 const maximumRetries = 4;
 const retryBaseMs = 1000;
@@ -100,9 +102,7 @@ export class DataApi implements Database {
         if (!transient || attempt >= maximumRetries) {
           throw error;
         }
-        await new Promise((resolve) =>
-          setTimeout(resolve, retryBaseMs * 2 ** attempt + Math.random() * retryJitterMs),
-        );
+        await delay(backoffDelay(attempt, { baseMs: retryBaseMs, jitterMs: retryJitterMs }));
       }
     }
   }

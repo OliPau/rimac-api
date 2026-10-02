@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
+import { backoffDelay } from '#infrastructure/shared/backoff';
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -81,7 +82,10 @@ export class DynamoAppointments implements Appointments {
           throw error;
         }
         await delay(
-          transactionRetryBaseMs * 2 ** attempt + Math.random() * transactionRetryJitterMs,
+          backoffDelay(attempt, {
+            baseMs: transactionRetryBaseMs,
+            jitterMs: transactionRetryJitterMs,
+          }),
         );
       }
     }

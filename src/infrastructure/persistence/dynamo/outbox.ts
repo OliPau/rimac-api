@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { backoffDelay } from '#infrastructure/shared/backoff';
 import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { event as eventSchema } from '#infrastructure/messaging/dto/event.dto';
 import type { Event } from '#domain/appointments/index';
@@ -9,6 +10,7 @@ const publishedRetentionSeconds = 24 * 60 * 60;
 const maximumRetrySeconds = 15 * 60;
 const maximumRetryExponent = 10;
 const retryJitterSeconds = 10;
+const millisecondsPerSecond = 1000;
 
 export class DynamoOutbox implements Outbox {
   private readonly leases = new Map<string, { owner: string; attempts: number }>();
@@ -65,10 +67,12 @@ export class DynamoOutbox implements Outbox {
       throw new Error('Missing outbox lease');
     }
     const seconds = Math.floor(this.now() / 1000);
-    const delay = Math.min(
-      maximumRetrySeconds,
-      2 ** Math.min(lease.attempts, maximumRetryExponent) +
-        Math.floor(Math.random() * retryJitterSeconds),
+    const delaySeconds = Math.floor(
+      backoffDelay(Math.min(lease.attempts, maximumRetryExponent), {
+        baseMs: millisecondsPerSecond,
+        jitterMs: retryJitterSeconds * millisecondsPerSecond,
+        maximumMs: maximumRetrySeconds * millisecondsPerSecond,
+      }) / millisecondsPerSecond,
     );
     try {
       await this.client.send(
@@ -84,7 +88,7 @@ export class DynamoOutbox implements Outbox {
             ':owner': lease.owner,
             ...(sent
               ? { ':sent': 'sent', ':expiry': seconds + publishedRetentionSeconds }
-              : { ':next': seconds + delay }),
+              : { ':next': seconds + delaySeconds }),
           },
         }),
       );

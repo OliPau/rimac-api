@@ -6,6 +6,10 @@ import { setTimeout as delay } from 'node:timers/promises';
 import assert from 'node:assert/strict';
 import { acceptance, appointment } from '#infrastructure/shared/appointment.schema';
 import { z } from 'zod';
+import { backoffDelay } from '#infrastructure/shared/backoff';
+
+const retryBaseMs = 1000;
+const retryJitterMs = 1000;
 
 const endpoint = process.env.API_URL ?? (await stackOutputs(stacks.application)).get('HttpApiUrl');
 const url = endpoint.replace(/\/$/, '');
@@ -23,7 +27,7 @@ async function call(path: string, body?: unknown, key?: string): Promise<Respons
     if (![429, 503].includes(response.status) || attempt >= 6) {
       return response;
     }
-    await delay(1000 + Math.random() * 1000);
+    await delay(backoffDelay(0, { baseMs: retryBaseMs, jitterMs: retryJitterMs }));
   }
 }
 
