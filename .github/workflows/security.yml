@@ -34,7 +34,7 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: npm install --global snyk@1.1307.4
+      - run: npm install --global --ignore-scripts snyk@1.1307.4
       - name: Reject high and critical dependency vulnerabilities
         id: scan
         run: snyk test --all-projects --detection-depth=1 --dev --org=olipau --severity-threshold=high
