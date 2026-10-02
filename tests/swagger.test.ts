@@ -120,10 +120,11 @@ test('caches for at most 60 seconds, rotates credentials and never serves stale 
     vi.advanceTimersByTime(1);
     mock.on(GetSecretValueCommand).rejects(new Error('unavailable'));
     await expect(get()).rejects.toThrow('unavailable');
-    const rotated = { ...credentials, password: randomBytes(24).toString('hex') };
+    const rotated = { ...credentials, username: 'admin' };
     mock.on(GetSecretValueCommand).resolves({ SecretString: JSON.stringify(rotated) });
     expect(await get()).toEqual(rotated);
     expect(authorized(authorization, rotated)).toBe(false);
+    expect(authorized(basic(`admin:${credentials.password}`), rotated)).toBe(true);
     vi.advanceTimersByTime(60_000);
     for (const result of [
       {},

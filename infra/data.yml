@@ -13,7 +13,7 @@ Resources:
     Properties:
       Name: !Sub ${ProjectName}/${Stage}/swagger
       GenerateSecretString:
-        SecretStringTemplate: '{"username":"swagger"}'
+        SecretStringTemplate: '{"username":"admin"}'
         GenerateStringKey: password
         PasswordLength: 32
       Tags:

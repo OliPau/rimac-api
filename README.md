@@ -21,9 +21,11 @@ Activar mise en la terminal o ejecutar los comandos dentro de `mise exec --`. La
 
 ## Swagger
 
-En el despliegue, abrir **`<HttpApiUrl>/swagger`**, que redirige a `/swagger/index.html`. El navegador solicita autenticación HTTP Basic: usuario `swagger` y contraseña entregada por un canal privado. La contraseña se almacena en Secrets Manager; no forma parte del repositorio, del contrato OpenAPI ni de los paquetes.
+En el despliegue, abrir **`<HttpApiUrl>/swagger`**, que redirige a `/swagger/index.html`. El navegador solicita autenticación HTTP Basic: usuario `admin` y contraseña entregada por un canal privado. La contraseña se almacena en Secrets Manager; no forma parte del repositorio, del contrato OpenAPI ni de los paquetes.
 
 La página, los recursos estáticos y `/swagger/openapi.json` requieren autenticación. **Try it out ejecuta GET y POST reales**; POST puede crear citas ficticias. Las credenciales de la documentación no se incluyen en esas llamadas a la API pública.
+
+El POST requiere `insuredId` como texto de exactamente cinco dígitos, `scheduleId` como entero positivo y `countryISO` como `PE` o `CL`. No se recortan ceros, no se convierten números escritos como texto y no se corrigen minúsculas. `scheduleId` identifica el espacio de atención previamente seleccionado; esta demo no consulta un catálogo de horarios ni de asegurados. Las respuestas de validación conservan su código e incluyen `error.details` con el campo y la regla incumplida. Swagger muestra ejemplos de respuestas para entradas inválidas.
 
 Para validar y exportar el contrato sin AWS:
 

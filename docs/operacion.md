@@ -15,13 +15,15 @@ El script de cambios bloquea eliminaciones y sustituciones. Para desmontar o eje
 
 ## Credencial de Swagger
 
-Secrets Manager conserva `rimac/demo/swagger`, con campos `username` y `password`. CloudFormation genera una contraseña inicial aleatoria; no se incrustan credenciales elegidas en las plantillas.
+Secrets Manager conserva `rimac/demo/swagger`, con campos `username` y `password`. El usuario es `admin`. CloudFormation genera una contraseña inicial aleatoria; no se incrustan credenciales elegidas en las plantillas.
 
 Para establecer o rotar la contraseña, proporcionar `SWAGGER_PASSWORD` por un mecanismo privado de la terminal y ejecutar:
 
 ```sh
 pnpm exec tsx scripts/swagger-secret.ts
 ```
+
+Sin `SWAGGER_PASSWORD`, el mismo script establece el usuario `admin` y conserva la contraseña actual. Para ello necesita también `secretsmanager:GetSecretValue`. Si se cambia `GenerateSecretString` en CloudFormation, AWS genera una contraseña nueva: al migrar el usuario se debe conservar la versión anterior en Secrets Manager y restablecer su contraseña mediante el SDK, sin imprimirla ni guardarla en archivos.
 
 La identidad operadora necesita leer las salidas del stack y `secretsmanager:PutSecretValue` sobre ese secreto. Retirar la variable del entorno al terminar. No escribir la contraseña en comandos que queden en el historial, archivos versionados, capturas ni logs. La rotación se refleja como máximo en 60 segundos por instancia activa.
 
