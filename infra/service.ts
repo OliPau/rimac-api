@@ -25,7 +25,6 @@ export function service({ cluster, secrets, account, swaggerSecret }: Deployment
       environment: { SWAGGER_SECRET_ARN: swaggerSecret },
       events: [
         { httpApi: { method: 'GET', path: '/swagger' } },
-        { httpApi: { method: 'GET', path: '/swagger/' } },
         { httpApi: { method: 'GET', path: '/swagger/{proxy+}' } },
       ],
     },

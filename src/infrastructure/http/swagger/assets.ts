@@ -1,5 +1,9 @@
 export const swaggerAssets = [
-  { route: '/swagger/', file: 'static/swagger/index.html', type: 'text/html; charset=utf-8' },
+  {
+    route: '/swagger/index.html',
+    file: 'static/swagger/index.html',
+    type: 'text/html; charset=utf-8',
+  },
   {
     route: '/swagger/swagger-ui.css',
     file: 'static/swagger/swagger-ui.css',

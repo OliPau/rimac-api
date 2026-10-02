@@ -21,7 +21,7 @@ Activar mise en la terminal o ejecutar los comandos dentro de `mise exec --`. La
 
 ## Swagger
 
-En el despliegue, abrir **`<HttpApiUrl>/swagger/`**. El navegador solicita autenticación HTTP Basic: usuario `swagger` y contraseña entregada por un canal privado. La contraseña se almacena en Secrets Manager; no forma parte del repositorio, del contrato OpenAPI ni de los paquetes.
+En el despliegue, abrir **`<HttpApiUrl>/swagger`**, que redirige a `/swagger/index.html`. El navegador solicita autenticación HTTP Basic: usuario `swagger` y contraseña entregada por un canal privado. La contraseña se almacena en Secrets Manager; no forma parte del repositorio, del contrato OpenAPI ni de los paquetes.
 
 La página, los recursos estáticos y `/swagger/openapi.json` requieren autenticación. **Try it out ejecuta GET y POST reales**; POST puede crear citas ficticias. Las credenciales de la documentación no se incluyen en esas llamadas a la API pública.
 

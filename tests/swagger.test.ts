@@ -15,7 +15,7 @@ vi.mock('node:fs/promises', () => ({ readFile: vi.fn() }));
 const credentials = { username: 'test-reader', password: randomBytes(24).toString('hex') };
 const basic = (value: string) => `Basic ${Buffer.from(value).toString('base64')}`;
 const authorization = basic(`${credentials.username}:${credentials.password}`);
-const event = (rawPath = '/swagger/', header: string | undefined = authorization) => ({
+const event = (rawPath = '/swagger/index.html', header: string | undefined = authorization) => ({
   ...http('GET /swagger/{proxy+}'),
   rawPath,
   headers: { Authorization: header },
@@ -57,7 +57,7 @@ test('protects every documentation asset and rejects unknown paths and methods',
   const handle = swaggerHandler(async () => credentials, load, report);
   expect(await handle(event('/swagger', ''))).toMatchObject({
     statusCode: 308,
-    headers: { location: '/swagger/' },
+    headers: { location: '/swagger/index.html' },
   });
   for (const asset of swaggerAssets) {
     const anonymous = await handle(event(asset.route, ''));

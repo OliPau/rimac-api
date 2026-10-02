@@ -94,7 +94,7 @@ sequenceDiagram
     participant Docs as Lambda Swagger
     participant Secrets as Secrets Manager
     participant API as API de citas
-    Browser->>Docs: GET /swagger/
+    Browser->>Docs: GET /swagger/index.html
     Docs->>Secrets: Leer credencial si la caché caducó
     Docs-->>Browser: 401 y desafío Basic
     Browser->>Docs: GET con credencial
@@ -103,4 +103,4 @@ sequenceDiagram
     API-->>Browser: Resultado de la operación
 ```
 
-La caché dura como máximo 60 segundos. Si Secrets Manager falla después de su vencimiento, Swagger responde `503` sin reutilizar el secreto vencido. La redirección de `/swagger` a `/swagger/` ocurre antes del desafío para acotar el ámbito de autenticación del navegador.
+La caché dura como máximo 60 segundos. Si Secrets Manager falla después de su vencimiento, Swagger responde `503` sin reutilizar el secreto vencido. La redirección de `/swagger` a `/swagger/index.html` ocurre antes del desafío para acotar el ámbito de autenticación del navegador a `/swagger/`. API Gateway HTTP API no admite declarar una ruta con el segmento final vacío; las rutas desplegadas son `/swagger` y `/swagger/{proxy+}`.

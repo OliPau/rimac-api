@@ -18,6 +18,10 @@ test('keeps deployed names and rejects local placeholders as deployment input', 
   expect(config.functions.swagger?.environment).toEqual({
     SWAGGER_SECRET_ARN: localDeployment().swaggerSecret,
   });
+  expect(config.functions.swagger?.events).toEqual([
+    { httpApi: { method: 'GET', path: '/swagger' } },
+    { httpApi: { method: 'GET', path: '/swagger/{proxy+}' } },
+  ]);
   const resources: Resources = config.resources.Resources;
   const swaggerRole = JSON.stringify(resources.SwaggerRole);
   expect(swaggerRole).toContain(localDeployment().swaggerSecret);

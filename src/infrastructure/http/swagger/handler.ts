@@ -24,7 +24,7 @@ export function swaggerHandler(
       body,
     });
     if (event.rawPath === '/swagger') {
-      return { ...response(308, ''), headers: { ...headers, location: '/swagger/' } };
+      return { ...response(308, ''), headers: { ...headers, location: '/swagger/index.html' } };
     }
     try {
       const authorization = Object.entries(event.headers).find(
