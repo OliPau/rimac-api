@@ -1,1 +1,8 @@
-[]
+[
+  {
+    "key": "AaD8nLWD0PUDGfC3JR3V",
+    "rule": "cloudformation:S6258",
+    "component": "OliPau_rimac-api:infra/github.yml",
+    "justification": "The finding now refers to AccessLogs, the separate private SSE-S3 destination for Artifacts server access logs. AWS explicitly recommends disabling server access logging on the destination bucket to avoid recursive logging. Artifacts itself has LoggingConfiguration; both buckets enforce HTTPS, versioning and seven-day lifecycle retention. This is a documented contextual exception, not a corrected finding or a disabled rule. https://docs.aws.amazon.com/AmazonS3/latest/userguide/enable-server-access-logging.html"
+  }
+]

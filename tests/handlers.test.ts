@@ -10,6 +10,7 @@ import {
 import { SNSClient, PublishCommand } from '@aws-sdk/client-sns';
 import { Logger } from '@aws-lambda-powertools/logger';
 import { context, event, http, sqs } from './fixtures.js';
+import { identity } from '#domain/appointments/index';
 
 const dynamo = mockClient(DynamoDBDocumentClient);
 const sns = mockClient(SNSClient);
@@ -61,6 +62,37 @@ test('keeps acceptance when immediate dispatch fails and logs the failure', asyn
     statusCode: 503,
   });
   expect(Logger.prototype.error).toHaveBeenCalledWith('RequestFailed', { errorName: 'Error' });
+});
+
+test('logs immediate SNS and rescheduling failures while retaining durable acceptance', async () => {
+  const appointmentId = identity({
+    insuredId: '00123',
+    scheduleId: 123,
+    countryISO: 'PE',
+  }).appointmentId;
+  const publishCause = Object.assign(new Error('private publisher details'), {
+    name: 'PublishFailure',
+  });
+  sns.on(PublishCommand).rejects(publishCause);
+  dynamo
+    .on(UpdateCommand)
+    .resolvesOnce({ Attributes: { event: { ...event, appointmentId }, attempts: 1 } })
+    .rejects(Object.assign(new Error('private storage details'), { name: 'RescheduleFailure' }));
+  const { handler } = await import('../src/handlers/appointment.js');
+  expect(await handler(http('POST /appointments', input), context)).toMatchObject({
+    statusCode: 202,
+  });
+  expect(Logger.prototype.error).toHaveBeenCalledWith(
+    'PublicationFailed',
+    expect.objectContaining({
+      phase: 'publish',
+      errorName: 'PublishFailure',
+      recoveryPhase: 'reschedule',
+      recoveryErrorName: 'RescheduleFailure',
+      correlationId: event.correlationId,
+    }),
+  );
+  expect(JSON.stringify(vi.mocked(Logger.prototype.error).mock.calls)).not.toContain('private');
 });
 
 test('confirms SQS messages and reports only failed records', async () => {
