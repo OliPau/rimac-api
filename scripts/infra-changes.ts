@@ -42,7 +42,7 @@ const selected = targets.find(({ name }) => name === target);
 assert.ok(selected, 'Unsupported infrastructure stack');
 const client = new CloudFormationClient({ region: project.region });
 const StackName = selected.stack;
-const ChangeSetName = 'security-remediation';
+const ChangeSetName = 'swagger-documentation';
 await mkdir('delivery', { recursive: true });
 if (operation === 'plan') {
   const stack = (await client.send(new DescribeStacksCommand({ StackName }))).Stacks?.[0];

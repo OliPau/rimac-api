@@ -33,6 +33,7 @@ export const deployment = z.object({
   account,
   cluster,
   secrets: z.object({ PE: secret, CL: secret }),
+  swaggerSecret: secret,
 });
 export type Deployment = z.infer<typeof deployment>;
 
@@ -40,6 +41,7 @@ export function localDeployment(): Deployment {
   return {
     account: '000000000000',
     cluster: `arn:aws:rds:${project.region}:000000000000:cluster:${prefix}`,
+    swaggerSecret: `arn:aws:secretsmanager:${project.region}:000000000000:secret:rimac/demo/swagger-local`,
     secrets: {
       PE: `arn:aws:secretsmanager:${project.region}:000000000000:secret:rimac/demo/pe-local`,
       CL: `arn:aws:secretsmanager:${project.region}:000000000000:secret:rimac/demo/cl-local`,

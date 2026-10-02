@@ -17,6 +17,7 @@ await writeFile(
           Properties: { LogGroupName: `/aws/lambda/${resource('retry')}` },
         },
         AppointmentLogGroup: { Type: 'AWS::Logs::LogGroup' },
+        SwaggerLogGroup: { Type: 'AWS::Logs::LogGroup' },
         AppointmentUnderscorepeLogGroup: { Type: 'AWS::Logs::LogGroup' },
         AppointmentUnderscoreclLogGroup: { Type: 'AWS::Logs::LogGroup' },
       },

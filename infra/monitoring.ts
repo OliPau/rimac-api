@@ -29,7 +29,7 @@ export function monitoring(): Resources {
       },
     };
   }
-  for (const name of ['appointment', 'appointment_pe', 'appointment_cl', 'retry']) {
+  for (const name of ['appointment', 'appointment_pe', 'appointment_cl', 'retry', 'swagger']) {
     resources[`${name.replaceAll('_', '')}Errors`] = {
       Type: 'AWS::CloudWatch::Alarm',
       Properties: {
@@ -78,6 +78,7 @@ export function monitoring(): Resources {
     'AppointmentUnderscorepeLogGroup',
     'AppointmentUnderscoreclLogGroup',
     'RetryLogGroup',
+    'SwaggerLogGroup',
   ]) {
     resources[`${group}HandledErrors`] = {
       Type: 'AWS::Logs::MetricFilter',

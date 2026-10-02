@@ -45,7 +45,11 @@ function role(name: string, statements: Statement[]): Resource {
   };
 }
 
-export function roles(cluster: string, secrets: Record<Country, string>): Resources {
+export function roles(
+  cluster: string,
+  secrets: Record<Country, string>,
+  swaggerSecret: string,
+): Resources {
   const publish = allow('sns:Publish', { Ref: 'Topic' });
   const decryptTopic = allow(['kms:GenerateDataKey', 'kms:Decrypt'], '*');
   decryptTopic.Condition = {
@@ -62,6 +66,7 @@ export function roles(cluster: string, secrets: Record<Country, string>): Resour
   const consume = (queue: string): Statement =>
     allow(['sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:GetQueueAttributes'], arn(queue));
   const resources: Resources = {
+    SwaggerRole: role('swagger', [allow('secretsmanager:GetSecretValue', swaggerSecret)]),
     AppointmentRole: role('appointment', [
       allow(
         [

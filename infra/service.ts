@@ -7,7 +7,7 @@ import type { Functions } from './types.js';
 
 import { project, resource, type Deployment } from './config.js';
 
-export function service({ cluster, secrets, account }: Deployment) {
+export function service({ cluster, secrets, account, swaggerSecret }: Deployment) {
   const arn = (name: string): AwsCfGetAtt => ({ 'Fn::GetAtt': [name, 'Arn'] });
   const environment = {
     APPOINTMENTS_TABLE: { Ref: 'Appointments' },
@@ -16,6 +16,19 @@ export function service({ cluster, secrets, account }: Deployment) {
     TOPIC_ARN: { Ref: 'Topic' },
   };
   const functions: Functions = {
+    swagger: {
+      handler: 'src/handlers/swagger.handler',
+      package: { artifact: '.local/artifacts/swagger.zip' },
+      timeout: 10,
+      reservedConcurrency: 5,
+      role: arn('SwaggerRole'),
+      environment: { SWAGGER_SECRET_ARN: swaggerSecret },
+      events: [
+        { httpApi: { method: 'GET', path: '/swagger' } },
+        { httpApi: { method: 'GET', path: '/swagger/' } },
+        { httpApi: { method: 'GET', path: '/swagger/{proxy+}' } },
+      ],
+    },
     appointment: {
       handler: 'src/handlers/appointment.handler',
       package: { artifact: '.local/artifacts/appointment.zip' },
@@ -97,7 +110,12 @@ export function service({ cluster, secrets, account }: Deployment) {
     package: { individually: true, patterns: ['!**', '!.env*'] },
     functions,
     resources: {
-      Resources: { ...tables(), ...messaging(), ...roles(cluster, secrets), ...monitoring() },
+      Resources: {
+        ...tables(),
+        ...messaging(),
+        ...roles(cluster, secrets, swaggerSecret),
+        ...monitoring(),
+      },
       extensions: {
         HttpApiStage: {
           Properties: {

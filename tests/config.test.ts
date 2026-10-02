@@ -14,6 +14,15 @@ test('keeps deployed names and rejects local placeholders as deployment input', 
     'rimac-demo-appointments',
   );
   expect(config.functions.appointment?.handler).toBe('src/handlers/appointment.handler');
+  expect(config.functions.swagger?.environment).toEqual({
+    SWAGGER_SECRET_ARN: localDeployment().swaggerSecret,
+  });
+  const swaggerRole = JSON.stringify(config.resources.Resources.SwaggerRole);
+  expect(swaggerRole).toContain(localDeployment().swaggerSecret);
+  expect(swaggerRole).toContain('secretsmanager:GetSecretValue');
+  for (const action of ['dynamodb:', 'sns:', 'sqs:', 'rds-data:', 'PutSecretValue']) {
+    expect(swaggerRole).not.toContain(action);
+  }
   expect(deployment.safeParse(localDeployment()).success).toBe(false);
   expect(deployment.safeParse({}).success).toBe(false);
 });

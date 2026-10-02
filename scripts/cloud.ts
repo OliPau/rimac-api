@@ -28,6 +28,7 @@ export async function deployedResources() {
   return deployment.parse({
     account: outputs.account,
     cluster: outputs.get('ClusterArn'),
+    swaggerSecret: outputs.get('SwaggerSecret'),
     secrets: { PE: outputs.get('SecretPE'), CL: outputs.get('SecretCL') },
   });
 }
