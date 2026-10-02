@@ -44,3 +44,39 @@ test('returns an empty page for omitted DynamoDB items', async () => {
   mock.on(QueryCommand).resolves({});
   expect(await store.list('00123', 20)).toEqual({ items: [] });
 });
+
+test.each(['ValidationError', 'ItemCollectionSizeLimitExceeded', 'UnknownPermanentCode'])(
+  'does not retry permanent cancellation %s even alongside a conflict',
+  async (Code) => {
+    mock.on(GetCommand).resolves({});
+    const cause = Object.assign(new Error('permanent'), {
+      name: 'TransactionCanceledException',
+      CancellationReasons: [{ Code: 'TransactionConflict' }, { Code }],
+    });
+    mock.on(TransactWriteCommand).rejects(cause);
+    await expect(store.create(event)).rejects.toBe(cause);
+    expect(mock.commandCalls(TransactWriteCommand)).toHaveLength(1);
+  },
+);
+
+test.each([
+  'None',
+  'ConditionalCheckFailed',
+  'TransactionConflict',
+  'ProvisionedThroughputExceeded',
+  'ThrottlingError',
+  undefined,
+])('retries recoverable or unspecified cancellation %s', async (Code) => {
+  mock.on(GetCommand).resolves({});
+  mock
+    .on(TransactWriteCommand)
+    .rejectsOnce(
+      Object.assign(new Error('temporary'), {
+        name: 'TransactionCanceledException',
+        CancellationReasons: [{ Code }],
+      }),
+    )
+    .resolves({});
+  await expect(store.create(event)).resolves.toMatchObject({ status: 'pending' });
+  expect(mock.commandCalls(TransactWriteCommand)).toHaveLength(2);
+});

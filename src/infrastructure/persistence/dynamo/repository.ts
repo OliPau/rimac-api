@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { backoffDelay } from '#infrastructure/shared/backoff';
+import { retryableCancellation } from './helpers/cancellation.js';
 import {
   DynamoDBDocumentClient,
   GetCommand,
@@ -74,11 +75,7 @@ export class DynamoAppointments implements Appointments {
         await this.client.send(new TransactWriteCommand({ TransactItems: writes }));
         return accepted;
       } catch (error) {
-        if (
-          !(error instanceof Error) ||
-          error.name !== 'TransactionCanceledException' ||
-          attempt === transactionAttempts - 1
-        ) {
+        if (!retryableCancellation(error) || attempt === transactionAttempts - 1) {
           throw error;
         }
         await delay(
