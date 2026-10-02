@@ -30,7 +30,13 @@ function setup() {
 
 test('marks publication only after successful delivery', async () => {
   const { dispatcher, outbox, publisher } = setup();
-  expect(await dispatcher.execute()).toBe(1);
+  expect(await dispatcher.execute()).toEqual({
+    attempted: 1,
+    sent: 1,
+    skipped: 0,
+    failed: 0,
+    failures: [],
+  });
   expect(publisher.publish).toHaveBeenCalledWith(event);
   expect(outbox.sent).toHaveBeenCalledWith(event);
   expect(outbox.failed).not.toHaveBeenCalled();

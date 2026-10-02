@@ -1,5 +1,6 @@
 import type { Logger } from '@aws-lambda-powertools/logger';
 import type { DispatchPendingAppointments } from '#application/appointments/use-cases/dispatch';
+import { reportPublicationFailure } from './failure.js';
 
 export function retryHandler(
   dispatch: DispatchPendingAppointments,
@@ -7,7 +8,10 @@ export function retryHandler(
   logger: Logger,
 ) {
   return async () => {
-    const count = await dispatch.execute();
-    logger.info('OutboxRetry', { count, pendingAge: await pendingAge() });
+    const { failures, ...counts } = await dispatch.execute();
+    for (const failure of failures) {
+      reportPublicationFailure(logger, failure);
+    }
+    logger.info('OutboxRetry', { ...counts, pendingAge: await pendingAge() });
   };
 }

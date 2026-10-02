@@ -52,7 +52,10 @@ test('keeps acceptance when immediate dispatch fails and logs the failure', asyn
   expect(await handler(http('POST /appointments', input), context)).toMatchObject({
     statusCode: 202,
   });
-  expect(Logger.prototype.warn).toHaveBeenCalledWith('ImmediatePublishFailed');
+  expect(Logger.prototype.error).toHaveBeenCalledWith(
+    'PublicationFailed',
+    expect.objectContaining({ phase: 'claim', errorName: 'Error' }),
+  );
   dynamo.on(GetCommand).rejects(new Error('unavailable'));
   expect(await handler(http('POST /appointments', input), context)).toMatchObject({
     statusCode: 503,
@@ -83,7 +86,13 @@ test('scheduled entrypoint recovers due messages and emits pending age', async (
   const { handler } = await import('../src/handlers/retry.js');
   await handler();
   expect(sns.commandCalls(PublishCommand)).toHaveLength(1);
-  expect(Logger.prototype.info).toHaveBeenCalledWith('OutboxRetry', { count: 1, pendingAge: 0 });
+  expect(Logger.prototype.info).toHaveBeenCalledWith('OutboxRetry', {
+    attempted: 1,
+    sent: 1,
+    skipped: 0,
+    failed: 0,
+    pendingAge: 0,
+  });
 });
 
 test('rejects missing runtime configuration', async () => {

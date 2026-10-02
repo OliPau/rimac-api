@@ -5,9 +5,10 @@ import { httpHandler } from '#infrastructure/http/handler';
 import { confirmationHandler } from '#infrastructure/sqs/confirmation';
 import { appointments, dispatcher } from './dynamo.js';
 import { logger } from './config.js';
+import { reportPublicationFailure } from '#infrastructure/messaging/failure';
 
-const create = new CreateAppointment(appointments, dispatcher, () =>
-  logger.warn('ImmediatePublishFailed'),
+const create = new CreateAppointment(appointments, dispatcher, (failure) =>
+  reportPublicationFailure(logger, failure),
 );
 const list = new ListAppointments(appointments);
 const confirm = new ConfirmAppointment(appointments);

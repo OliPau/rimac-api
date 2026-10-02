@@ -1,11 +1,15 @@
 import type { CreateAppointmentDto } from '#application/appointments/dto/create.dto';
-import type { Appointments, PublicationDispatch } from '#application/appointments/ports/index';
+import type {
+  Appointments,
+  PublicationDispatch,
+  PublicationFailure,
+} from '#application/appointments/ports/index';
 
 export class CreateAppointment {
   constructor(
     private readonly appointments: Appointments,
     private readonly dispatcher: PublicationDispatch,
-    private readonly reportFailure: () => void,
+    private readonly reportFailure: (failure: PublicationFailure) => void,
   ) {}
 
   async execute(input: CreateAppointmentDto) {
@@ -16,9 +20,17 @@ export class CreateAppointment {
     };
     const accepted = await this.appointments.create(request, input.idempotencyKey);
     try {
-      await this.dispatcher.dispatch(accepted.appointmentId);
-    } catch {
-      this.reportFailure();
+      const result = await this.dispatcher.dispatch(accepted.appointmentId);
+      if (result.status === 'failed') {
+        this.reportFailure(result);
+      }
+    } catch (cause) {
+      this.reportFailure({
+        status: 'failed',
+        appointmentId: accepted.appointmentId,
+        phase: 'dispatch',
+        cause,
+      });
     }
     return accepted;
   }

@@ -77,6 +77,7 @@ export function monitoring(): Resources {
     'AppointmentLogGroup',
     'AppointmentUnderscorepeLogGroup',
     'AppointmentUnderscoreclLogGroup',
+    'RetryLogGroup',
   ]) {
     resources[`${group}HandledErrors`] = {
       Type: 'AWS::Logs::MetricFilter',
