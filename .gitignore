@@ -4,8 +4,9 @@ dist/
 .env*
 !.env.example
 *.md
+!README.md
+!docs/**/*.md
 *.pdf
-docs/
 delivery/
 coverage/
 reports/
