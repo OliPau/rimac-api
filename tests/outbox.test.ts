@@ -48,24 +48,14 @@ test('reads immutable pending age and handles empty or invalid results', async (
     .resolvesOnce({ Items: [{ pendingSince: now + 1000 }] })
     .resolvesOnce({ Items: [{ pendingSince: 'invalid' }] })
     .resolvesOnce({ Items: [{ pendingSince: NaN }] });
-  expect(await outbox.oldestPendingAge()).toBe(0);
-  expect(await outbox.oldestPendingAge()).toBe(0);
-  expect(await outbox.oldestPendingAge()).toBe(600);
-  expect(await outbox.oldestPendingAge()).toBe(0);
-  await expect(outbox.oldestPendingAge()).rejects.toThrow('Invalid pending publication timestamp');
-  await expect(outbox.oldestPendingAge()).rejects.toThrow('Invalid pending publication timestamp');
+  expect(await outbox.pendingAge()).toBe(0);
+  expect(await outbox.pendingAge()).toBe(0);
+  expect(await outbox.pendingAge()).toBe(600);
+  expect(await outbox.pendingAge()).toBe(0);
+  await expect(outbox.pendingAge()).rejects.toThrow('Invalid pending publication timestamp');
+  await expect(outbox.pendingAge()).rejects.toThrow('Invalid pending publication timestamp');
   expect(mock.commandCalls(QueryCommand)[0]?.args[0].input).toMatchObject({
     IndexName: 'pending-age',
     Limit: 1,
   });
-});
-
-test('supports the previous metric during the staged migration', async () => {
-  const outbox = new DynamoOutbox(client, 'outbox', () => now);
-  mock
-    .on(QueryCommand)
-    .resolvesOnce({})
-    .resolvesOnce({ Items: [{ event }] });
-  expect(await outbox.pendingAge()).toBe(0);
-  expect(await outbox.pendingAge()).toBe(600);
 });

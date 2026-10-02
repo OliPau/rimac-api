@@ -116,25 +116,6 @@ export class DynamoOutbox implements Outbox {
     const result = await this.client.send(
       new QueryCommand({
         TableName: this.table,
-        IndexName: 'due',
-        Limit: 1,
-        KeyConditionExpression: '#state = :pending',
-        ExpressionAttributeNames: { '#state': 'state' },
-        ExpressionAttributeValues: { ':pending': 'pending' },
-      }),
-    );
-    const first = result.Items?.[0];
-    if (!first) {
-      return 0;
-    }
-    const event = eventSchema.parse(first.event);
-    return Math.max(0, Math.floor((this.now() - Date.parse(event.occurredAt)) / 1000));
-  }
-
-  async oldestPendingAge(): Promise<number> {
-    const result = await this.client.send(
-      new QueryCommand({
-        TableName: this.table,
         IndexName: 'pending-age',
         Limit: 1,
         KeyConditionExpression: '#state = :pending',

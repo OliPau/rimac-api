@@ -182,12 +182,12 @@ test('keeps original pending age through leases, backoff and legacy migration', 
   );
   expect(await backfillPending(documents, tables.outbox)).toBe(1);
   expect(await backfillPending(documents, tables.outbox)).toBe(0);
-  expect(await outbox.oldestPendingAge()).toBe(600);
+  expect(await outbox.pendingAge()).toBe(600);
   if (!claimed) {
     throw new Error('Missing event');
   }
   await outbox.failed(claimed);
-  expect(await outbox.oldestPendingAge()).toBe(600);
+  expect(await outbox.pendingAge()).toBe(600);
   const future = new DynamoOutbox(documents, tables.outbox, () => clock + 1000000);
   const recovered = await future.claim(old.appointmentId);
   if (!recovered) {
@@ -198,5 +198,5 @@ test('keeps original pending age through leases, backoff and legacy migration', 
     new GetCommand({ TableName: tables.outbox, Key: { id: old.appointmentId } }),
   );
   expect(row.Item?.pendingSince).toBeUndefined();
-  expect(await outbox.oldestPendingAge()).toBeLessThan(600);
+  expect(await outbox.pendingAge()).toBeLessThan(600);
 });
