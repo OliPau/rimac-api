@@ -30,6 +30,11 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: -Dsonar.qualitygate.wait=true
+      - name: Audit all Sonar findings for this revision
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: pnpm exec tsx scripts/audit-sonar.ts
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - run: pnpm openapi
       - run: pnpm bundle
       - run: pnpm infra:validate

@@ -2,17 +2,7 @@ name: Dependency security
 on:
   push:
     branches: [main]
-    paths:
-      - package.json
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - .github/workflows/security.yml
   pull_request:
-    paths:
-      - package.json
-      - pnpm-lock.yaml
-      - pnpm-workspace.yaml
-      - .github/workflows/security.yml
   schedule:
     - cron: '23 13 * * 1'
   workflow_dispatch:
@@ -35,9 +25,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: npm install --global --ignore-scripts snyk@1.1307.4
-      - name: Reject high and critical dependency vulnerabilities
+      - name: Reject dependency vulnerabilities across the complete graph
         id: scan
-        run: snyk test --all-projects --detection-depth=1 --dev --org=olipau --severity-threshold=high
+        run: snyk test --all-projects --detection-depth=1 --dev --org=olipau
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       - name: Monitor the main dependency graph
