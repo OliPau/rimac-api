@@ -5,3 +5,4 @@ delivery
 coverage
 .local
 serverless.generated.json
+.playwright-mcp
